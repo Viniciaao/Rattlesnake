@@ -49,15 +49,30 @@ jobs:
       - name: Compile SnakeQa
         shell: pwsh
         run: |
-          Remove-Item "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs" -Force -ErrorAction SilentlyContinue
+          $target = "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs"
+          $diagnostics = "$env:GITHUB_WORKSPACE\compile-diagnostics.txt"
+          Remove-Item $target -Force -ErrorAction SilentlyContinue
           Push-Location $env:SANNY_DIR
           & ".\sanny.exe" --no-splash --mode sa --compile `
             "$env:GITHUB_WORKSPACE\cleo\SnakeQa.txt" `
-            "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs"
+            $target
           $exitCode = $LASTEXITCODE
-          if (Test-Path ".\compile.log") { Get-Content ".\compile.log" }
           Pop-Location
-          if ($exitCode -ne 0 -or -not (Test-Path "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs")) {
+
+          "exitCode=$exitCode" | Set-Content $diagnostics
+          "targetExists=$(Test-Path $target)" | Add-Content $diagnostics
+          "Generated scripts:" | Add-Content $diagnostics
+          Get-ChildItem $env:RUNNER_TEMP, $env:GITHUB_WORKSPACE -Filter "*.cs" -Recurse `
+            -ErrorAction SilentlyContinue | ForEach-Object FullName | Add-Content $diagnostics
+          "Compiler logs:" | Add-Content $diagnostics
+          Get-ChildItem $env:RUNNER_TEMP, $env:GITHUB_WORKSPACE -Filter "compile.log" -Recurse `
+            -ErrorAction SilentlyContinue | ForEach-Object {
+              $_.FullName | Add-Content $diagnostics
+              Get-Content $_.FullName | Add-Content $diagnostics
+            }
+          Get-Content $diagnostics
+
+          if ($exitCode -ne 0 -or -not (Test-Path $target)) {
             throw "SnakeQa compilation failed with exit code $exitCode"
           }
 
@@ -65,10 +80,14 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          find "$RUNNER_TEMP" "$GITHUB_WORKSPACE" -type f -iname "compile.log" \
-            -print -exec cat {} \; > compile-error.log
+          if [[ -f compile-diagnostics.txt ]]; then
+            cp compile-diagnostics.txt compile-error.log
+          else
+            find "$RUNNER_TEMP" "$GITHUB_WORKSPACE" -type f -iname "compile.log" \
+              -print -exec cat {} \; > compile-error.log
+          fi
           if [[ ! -s compile-error.log ]]; then
-            echo "compile.log was not created" > compile-error.log
+            echo "compile diagnostics were not created" > compile-error.log
           fi
           cat compile-error.log
           git config user.name "github-actions[bot]"
