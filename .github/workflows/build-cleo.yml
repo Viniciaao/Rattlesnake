@@ -1,0 +1,100 @@
+name: Build CLEO scripts
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/01a09838-rattlesnake
+    paths:
+      - "cleo/*.txt"
+      - "ModelsQa/**"
+      - "SoundsQa/**"
+      - "tools/validate_release.py"
+      - ".github/workflows/build-cleo.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-cleo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install official Sanny Builder
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "SannyBuilder-v4.2.0.zip"
+          $directory = Join-Path $env:RUNNER_TEMP "SannyBuilder"
+          Invoke-WebRequest `
+            -Uri "https://github.com/sannybuilder/dev/releases/download/v4.2.0/SannyBuilder-v4.2.0.zip" `
+            -OutFile $archive
+
+          $actualHash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          $expectedHash = "4aceb1c1e430e57bc57216fbe95a3eac1829f2bd982ba19d99bb147caa4b33e6"
+          if ($actualHash -ne $expectedHash) {
+            throw "Unexpected Sanny Builder archive hash: $actualHash"
+          }
+
+          Expand-Archive -Path $archive -DestinationPath $directory
+          "SANNY_DIR=$directory" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Compile SnakeQa
+        shell: pwsh
+        run: |
+          Remove-Item "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs" -Force -ErrorAction SilentlyContinue
+          Push-Location $env:SANNY_DIR
+          & ".\sanny.exe" --no-splash --mode sa --compile `
+            "$env:GITHUB_WORKSPACE\cleo\SnakeQa.txt" `
+            "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs"
+          $exitCode = $LASTEXITCODE
+          if (Test-Path ".\compile.log") { Get-Content ".\compile.log" }
+          Pop-Location
+          if ($exitCode -ne 0 -or -not (Test-Path "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs")) {
+            throw "SnakeQa compilation failed with exit code $exitCode"
+          }
+
+      - name: Compile SnakeQb
+        shell: pwsh
+        run: |
+          Remove-Item "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs" -Force -ErrorAction SilentlyContinue
+          Push-Location $env:SANNY_DIR
+          & ".\sanny.exe" --no-splash --mode sa --compile `
+            "$env:GITHUB_WORKSPACE\cleo\SnakeQb.txt" `
+            "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs"
+          $exitCode = $LASTEXITCODE
+          if (Test-Path ".\compile.log") { Get-Content ".\compile.log" }
+          Pop-Location
+          if ($exitCode -ne 0 -or -not (Test-Path "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs")) {
+            throw "SnakeQb compilation failed with exit code $exitCode"
+          }
+
+      - name: Validate release
+        run: python tools/validate_release.py
+
+      - name: Upload compiled scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rattlesnake-cleo-scripts
+          path: cleo/*.cs
+          if-no-files-found: error
+
+      - name: Commit compiled scripts
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          if git diff --quiet -- cleo/SnakeQa.cs cleo/SnakeQb.cs; then
+            echo "Compiled scripts are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cleo/SnakeQa.cs cleo/SnakeQb.cs
+          git commit -m "Build corrected CLEO scripts [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
