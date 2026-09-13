@@ -105,28 +105,36 @@ jobs:
             throw "SnakeQb compilation failed with exit code $exitCode"
           }
 
-      - name: Preserve compiler diagnostics
+      - name: Validate release
+        shell: bash
+        run: |
+          set +e
+          python tools/validate_release.py > validation-output.txt 2>&1
+          exit_code=$?
+          set -e
+          cat validation-output.txt
+          exit "$exit_code"
+
+      - name: Preserve build diagnostics
         if: failure()
         shell: bash
         run: |
-          if [[ -f compile-diagnostics.txt ]]; then
-            cp compile-diagnostics.txt compile-error.log
-          else
+          : > compile-error.log
+          [[ -f compile-diagnostics.txt ]] && cat compile-diagnostics.txt >> compile-error.log
+          [[ -f validation-output.txt ]] && cat validation-output.txt >> compile-error.log
+          if [[ ! -s compile-error.log ]]; then
             find "$RUNNER_TEMP" "$GITHUB_WORKSPACE" -type f -iname "compile.log" \
               -print -exec cat {} \; > compile-error.log
           fi
           if [[ ! -s compile-error.log ]]; then
-            echo "compile diagnostics were not created" > compile-error.log
+            echo "build diagnostics were not created" > compile-error.log
           fi
           cat compile-error.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f compile-error.log
-          git commit -m "Record CLEO compiler error [skip ci]"
+          git commit -m "Record CLEO build error [skip ci]"
           git push origin "HEAD:${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-
-      - name: Validate release
-        run: python tools/validate_release.py
 
       - name: Upload compiled scripts
         uses: actions/upload-artifact@v4
