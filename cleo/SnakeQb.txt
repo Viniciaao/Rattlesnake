@@ -43,7 +43,7 @@ const
     soundqa_2 = 6@
 
     find_kill = 5@              // nearby ped or vehicle handle
-    find_next = 4@              // recursive spatial-search flag
+    search_next = 4@            // recursive spatial-search flag
 
 
     model_id = 1672 //3065
@@ -936,9 +936,9 @@ wait 500
                     end
 
                     // Only vehicles near the snake cross the script boundary.
-                    find_next = false
-                    while 0AE2: find_kill = find_vehicle_near_point 1@ 2@ 3@ in_radius 10.0 find_next find_next pass_wrecked 1
-                        find_next = true
+                    search_next = false
+                    while 0AE2: find_kill = find_vehicle_near_point 1@ 2@ 3@ in_radius 10.0 find_next search_next pass_wrecked 1
+                        search_next = true
                         if
                             0897: car find_kill collided_with_object obj_1
                         then
