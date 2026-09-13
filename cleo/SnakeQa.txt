@@ -1,0 +1,723 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE newOpcodes}
+{$USE ini}
+{$USE Audio}
+
+0000: NOP
+
+script_name "SnakeQa"
+
+// By ArtemQa146
+
+const
+    obj_1 = 31@
+    
+    render_1 = 30@
+    render_2 = 29@
+    render_3 = 28@
+    render_4 = 27@
+    render_5 = 26@
+    render_6 = 25@
+    render_7 = 24@
+    render_8 = 23@
+    render_9 = 22@
+    render_10 = 21@
+    
+    render_model_1 = 20@
+    render_model_2 = 19@
+    render_model_3 = 18@
+    render_model_4 = 17@
+    render_model_5 = 16@
+    render_model_6 = 15@
+    render_model_7 = 14@
+    render_model_8 = 13@
+    render_model_9 = 12@
+    render_model_10 = 11@
+    
+    progress = 10@
+    soundqa = 9@
+    volume_ini = 8@
+    
+    progress_event = 7@
+    soundqa_2 = 6@
+    
+    find_kill = 1@              // не использовать в проверки еще
+    find = 0@                   // используется еще другими
+
+    
+    model_id = 1672 //3065
+end
+
+0AF0: 0@ = read_int_from_ini_file "cleo\Snake.ini" section "Settings" key "Cobra"
+if
+    not 0@ == 1
+then
+    0A93: terminate_this_custom_script
+end
+
+if
+    0E2D: is_game_first_start
+then
+    0F00: load_special_model_dff "ModelsQa\Snake1" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake1"
+    0F00: load_special_model_dff "ModelsQa\Snake2" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake2"
+    0F00: load_special_model_dff "ModelsQa\Snake3" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake3"
+    0F00: load_special_model_dff "ModelsQa\Snake4" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake4"
+    0F00: load_special_model_dff "ModelsQa\Snake5" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake5"
+    0F00: load_special_model_dff "ModelsQa\Snake6" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake6"
+    0F00: load_special_model_dff "ModelsQa\Snake7" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake7"
+    0F00: load_special_model_dff "ModelsQa\Snake8" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake8"
+    0F00: load_special_model_dff "ModelsQa\Snake9" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake9"
+    0F00: load_special_model_dff "ModelsQa\Snake10" txd "ModelsQa\Snake" store_to 0@
+    0AF1: write_int 0@ to_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake10"
+end
+
+0AF0: render_model_1 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake1"
+0AF0: render_model_2 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake2"
+0AF0: render_model_3 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake3"
+0AF0: render_model_4 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake4"
+0AF0: render_model_5 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake5"
+0AF0: render_model_6 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake6"
+0AF0: render_model_7 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake7"
+0AF0: render_model_8 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake8"
+0AF0: render_model_9 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake9"
+0AF0: render_model_10 = read_int_from_ini_file "cleo\SnakeModels.ini" section "Models" key "Snake10"
+
+0AF2: volume_ini = read_float_from_ini_file "cleo\Snake.ini" section "Settings" key "Volume"
+
+while true
+wait 500
+    if
+        player.Defined(0)
+    then
+        if
+            $ACTIVE_INTERIOR == 0
+        then
+            1@ = 0.0
+            2@ = 0.0
+            3@ = 0.0
+            4@ = false
+            
+            if
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 1194.4731 -2370.7844 12.4779 radius 40.0
+            then
+                1@ = 1194.4731
+                2@ = -2370.7844
+                3@ = 12.4779
+                4@ = true
+            end
+            
+            if
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 1454.3586 -1944.9504 24.9489 radius 40.0
+            then
+                1@ = 1454.3586 
+                2@ = -1944.9504
+                3@ = 24.9489
+                4@ = true
+            end
+            
+            if
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 110.1197 -1719.4899 9.2032 radius 40.0
+            then
+                1@ = 110.1197
+                2@ = -1719.4899
+                3@ = 9.2032
+                4@ = true
+            end
+            
+            if
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 766.2333 376.8286 23.2122 radius 40.0
+            then
+                1@ = 766.2333 
+                2@ = 376.8286
+                3@ = 23.2122
+                4@ = true
+            end
+            
+            if
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 633.1775 -629.5248 16.7997 radius 40.0
+            then
+                1@ = 633.1775
+                2@ = -629.5248
+                3@ = 16.7997
+                4@ = true
+            end
+            
+            if
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 1563.9517 34.0211 24.1641 radius 40.0
+            then
+                1@ = 1563.9517
+                2@ = 34.0211
+                3@ = 24.1641
+                4@ = true
+            end
+
+
+            if and
+                4@ == true
+                0EEA: locate_char_distance_to_coordinates $player_actor pos 1@ 2@ 3@ radius 40.0
+                not locate_char_distance_to_coordinates $player_actor pos 1@ 2@ 3@ radius 10.0
+            then
+
+                timera = 0
+
+                model.Load(model_id)
+                if
+                    not model.Available(model_id)
+                then
+                    repeat
+                    wait 0
+                    model.Load(model_id)
+                    until model.Available(model_id)
+                end
+                038B: load_requested_models
+                3@ += 0.5
+                0E01: create_object_no_save model_id at 1@ 2@ 3@ offset 0 ground 1 to obj_1
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_1 offset 0 0 0.0 rotation 0 0 0 store_to render_1
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_2 offset 0 0 0.0 rotation 0 0 0 store_to render_2
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_3 offset 0 0 0.0 rotation 0 0 0 store_to render_3
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_4 offset 0 0 0.0 rotation 0 0 0 store_to render_4
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_5 offset 0 0 0.0 rotation 0 0 0 store_to render_5
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_6 offset 0 0 0.0 rotation 0 0 0 store_to render_6
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_7 offset 0 0 0.0 rotation 0 0 0 store_to render_7
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_8 offset 0 0 0.0 rotation 0 0 0 store_to render_8
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_9 offset 0 0 0.0 rotation 0 0 0 store_to render_9
+                0F04: create_render_object_to_object_from_special obj_1 special_model render_model_10 offset 0 0 0.0 rotation 0 0 0 store_to render_10
+                0E31: set_render_object_visible render_1 1
+                0E31: set_render_object_visible render_2 0
+                0E31: set_render_object_visible render_3 0
+                0E31: set_render_object_visible render_4 0
+                0E31: set_render_object_visible render_5 0
+                0E31: set_render_object_visible render_6 0
+                0E31: set_render_object_visible render_7 0
+                0E31: set_render_object_visible render_8 0
+                0E31: set_render_object_visible render_9 0
+                0E31: set_render_object_visible render_10 0
+                08D2: object obj_1 scale_model 0.0
+                timera = 0
+                model.Destroy(model_id)
+                0208: 1@ = random_float_in_ranges 0.0 360.0
+                0177: set_object obj_1 Z_angle_to 1@
+                timerb = 0
+
+                0AC1: soundqa = load_audio_stream_with_3d_support "SoundsQa/SnakeAttack.mp3" // IF and SET
+                0AC1: soundqa_2 = load_audio_stream_with_3d_support "SoundsQa/SnakeIdle.mp3" // IF and SET
+                0AC3: link_3d_audio_stream soundqa to_object obj_1
+                0AC3: link_3d_audio_stream soundqa_2 to_object obj_1
+
+                progress = 0
+                progress_event = true
+
+                repeat
+                wait 0
+                if
+                    03CA:   object obj_1 exists
+                then
+
+                    // Если далеко то удаляем
+                    if
+                        0EE6: locate_char_distance_to_object $player_actor object obj_1 radius 55.0
+                    then
+                    else
+                        0AAE: remove_audio_stream soundqa
+                        0AAE: remove_audio_stream soundqa_2
+                        0108: destroy_object obj_1
+                        wait 3000
+                        break
+                    end
+
+
+
+                    if and
+                        not progress >= 146
+                        0EE6: locate_char_distance_to_object $player_actor object obj_1 radius 5.0
+                    then
+                        progress = 146
+                        0ABC: set_audio_stream soundqa_2 volume volume_ini
+                        0AAD: set_audio_stream soundqa_2 state 1
+                        timerb = 0
+                        progress_event = false
+                    else
+                        if and
+                            progress >= 146
+                            not progress >= 246
+                            not locate_char_distance_to_object $player_actor object obj_1 radius 7.0
+                        then
+                            progress = 346
+                            timera = 0
+                        end
+                    end
+
+                    if and
+                        timerb > 1000
+                        not progress >= 246
+                        0EE6: locate_char_distance_to_object $player_actor object obj_1 radius 2.0
+                        80DF:   not actor $PLAYER_ACTOR driving
+                    then
+                        progress = 246
+                        0ABC: set_audio_stream soundqa volume volume_ini
+                        0AAD: set_audio_stream soundqa state 1
+                        timerb = -1000
+                        progress_event = false
+                    end
+
+
+
+                // анимация
+                if and
+                    not progress >= 146
+                    progress_event == true
+                then
+
+                    if
+                        timerb > 5000
+                    then
+                        timerb = 0
+                    end
+
+
+                    // дефолт анимации
+                    if
+                        timerb > 1000
+                    then
+                        if
+                            progress == 0
+                        then
+                            0E31: set_render_object_visible render_1 1
+                            0E31: set_render_object_visible render_2 0
+                            0E31: set_render_object_visible render_3 0
+                            0E31: set_render_object_visible render_4 0
+                            0E31: set_render_object_visible render_5 0
+                            0E31: set_render_object_visible render_6 0
+                            0E31: set_render_object_visible render_7 0
+                            0E31: set_render_object_visible render_8 0
+                            0E31: set_render_object_visible render_9 0
+                            0E31: set_render_object_visible render_10 0
+                        end
+                    else
+                        if
+                            progress == 0
+                        then
+                            progress = 1
+                        end
+                    end
+
+
+                    // Анимация языка
+                    if and
+                        progress > 0
+                        timera > 60
+                    then
+                        if and
+                            timerb < 1000
+                            progress == 1
+                        then
+                            0E31: set_render_object_visible render_1 0
+                            0E31: set_render_object_visible render_2 1
+                            0E31: set_render_object_visible render_3 0
+                            0E31: set_render_object_visible render_4 0
+                            0E31: set_render_object_visible render_5 0
+                            0E31: set_render_object_visible render_6 0
+                            0E31: set_render_object_visible render_7 0
+                            0E31: set_render_object_visible render_8 0
+                            0E31: set_render_object_visible render_9 0
+                            0E31: set_render_object_visible render_10 0
+                            progress = 2
+                            TIMERA = 0
+                        else
+                            if and
+                                progress == 2
+                                timerb < 1000
+                            then
+                                0E31: set_render_object_visible render_1 0
+                                0E31: set_render_object_visible render_2 0
+                                0E31: set_render_object_visible render_3 1
+                                0E31: set_render_object_visible render_4 0
+                                0E31: set_render_object_visible render_5 0
+                                0E31: set_render_object_visible render_6 0
+                                0E31: set_render_object_visible render_7 0
+                                0E31: set_render_object_visible render_8 0
+                                0E31: set_render_object_visible render_9 0
+                                0E31: set_render_object_visible render_10 0
+                                progress = 1
+                                TIMERA = 0
+                            else
+                                if
+                                    timerb > 1000
+                                then
+                                    progress = 0
+                                end
+                            end
+                        end
+                    end
+                end
+
+
+
+                //  анимация перед атакой
+                if and
+                    progress >= 146
+                    not progress >= 246
+                    progress_event == false
+                then
+
+                    04C4: store_coords_to 0@ 1@ 2@ from_actor $player_actor with_offset 0.0 0.0 0.0
+                    0400: store_coords_to 3@ 4@ 5@ from_object obj_1 with_offset 0.0 0.0 0.0
+                    0E27: get_angle_from_two_coords 0@ 1@ and 3@ 4@ to 5@
+                    0177: set_object obj_1 Z_angle_to 5@
+
+                    // Анимация
+                    if
+                        timera > 50
+                    then
+                        if
+                            progress == 146
+                        then
+                            0E31: set_render_object_visible render_1 0
+                            0E31: set_render_object_visible render_2 0
+                            0E31: set_render_object_visible render_3 0
+                            0E31: set_render_object_visible render_4 1
+                            0E31: set_render_object_visible render_5 0
+                            0E31: set_render_object_visible render_6 0
+                            0E31: set_render_object_visible render_7 0
+                            0E31: set_render_object_visible render_8 0
+                            0E31: set_render_object_visible render_9 0
+                            0E31: set_render_object_visible render_10 0
+                            progress = 147
+                            TIMERA = 0
+                        else
+                            if
+                                progress == 147
+                            then
+                                0E31: set_render_object_visible render_1 0
+                                0E31: set_render_object_visible render_2 0
+                                0E31: set_render_object_visible render_3 0
+                                0E31: set_render_object_visible render_4 0
+                                0E31: set_render_object_visible render_5 1
+                                0E31: set_render_object_visible render_6 0
+                                0E31: set_render_object_visible render_7 0
+                                0E31: set_render_object_visible render_8 0
+                                0E31: set_render_object_visible render_9 0
+                                0E31: set_render_object_visible render_10 0
+                                progress = 148
+                                TIMERA = 0
+                            else
+                                if
+                                    timerb < 1500
+                                then
+                                    if
+                                        progress == 148
+                                    then
+                                        0E31: set_render_object_visible render_1 0
+                                        0E31: set_render_object_visible render_2 0
+                                        0E31: set_render_object_visible render_3 0
+                                        0E31: set_render_object_visible render_4 0
+                                        0E31: set_render_object_visible render_5 0
+                                        0E31: set_render_object_visible render_6 1
+                                        0E31: set_render_object_visible render_7 0
+                                        0E31: set_render_object_visible render_8 0
+                                        0E31: set_render_object_visible render_9 0
+                                        0E31: set_render_object_visible render_10 0
+                                        progress = 149
+                                        TIMERA = 0
+                                    else
+                                        0E31: set_render_object_visible render_1 0
+                                        0E31: set_render_object_visible render_2 0
+                                        0E31: set_render_object_visible render_3 0
+                                        0E31: set_render_object_visible render_4 0
+                                        0E31: set_render_object_visible render_5 0
+                                        0E31: set_render_object_visible render_6 0
+                                        0E31: set_render_object_visible render_7 1
+                                        0E31: set_render_object_visible render_8 0
+                                        0E31: set_render_object_visible render_9 0
+                                        0E31: set_render_object_visible render_10 0
+                                        progress = 148
+                                        TIMERA = 0
+                                    end
+                                else
+                                    progress = 147
+                                    if
+                                        timerb > 5000
+                                    then
+                                        timerb = 0
+                                        0ABC: set_audio_stream soundqa_2 volume volume_ini
+                                        0AAD: set_audio_stream soundqa_2 state 1
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                end
+
+
+
+
+                // анимация атаки
+                if and
+                    progress >= 246
+                    not progress >= 346
+                    progress_event == false
+                then
+
+                    04C4: store_coords_to 0@ 1@ 2@ from_actor $player_actor with_offset 0.0 0.0 0.0
+                    0400: store_coords_to 3@ 4@ 5@ from_object obj_1 with_offset 0.0 0.0 0.0
+                    0E27: get_angle_from_two_coords 0@ 1@ and 3@ 4@ to 5@
+                    0177: set_object obj_1 Z_angle_to 5@
+
+                    // Анимация
+                    if
+                        timera > 40
+                    then
+                        if
+                            progress == 246
+                        then
+                            0E31: set_render_object_visible render_1 0
+                            0E31: set_render_object_visible render_2 0
+                            0E31: set_render_object_visible render_3 0
+                            0E31: set_render_object_visible render_4 0
+                            0E31: set_render_object_visible render_5 0
+                            0E31: set_render_object_visible render_6 0
+                            0E31: set_render_object_visible render_7 0
+                            0E31: set_render_object_visible render_8 1
+                            0E31: set_render_object_visible render_9 0
+                            0E31: set_render_object_visible render_10 0
+                            progress = 247
+                            TIMERA = 0
+                        else
+                            if
+                                progress == 247
+                            then
+                                0E31: set_render_object_visible render_1 0
+                                0E31: set_render_object_visible render_2 0
+                                0E31: set_render_object_visible render_3 0
+                                0E31: set_render_object_visible render_4 0
+                                0E31: set_render_object_visible render_5 0
+                                0E31: set_render_object_visible render_6 0
+                                0E31: set_render_object_visible render_7 0
+                                0E31: set_render_object_visible render_8 0
+                                0E31: set_render_object_visible render_9 1
+                                0E31: set_render_object_visible render_10 0
+                                progress = 248
+                                TIMERA = 0
+                            else
+                                if
+                                    progress == 248
+                                then
+                                    0E31: set_render_object_visible render_1 0
+                                    0E31: set_render_object_visible render_2 0
+                                    0E31: set_render_object_visible render_3 0
+                                    0E31: set_render_object_visible render_4 0
+                                    0E31: set_render_object_visible render_5 0
+                                    0E31: set_render_object_visible render_6 0
+                                    0E31: set_render_object_visible render_7 0
+                                    0E31: set_render_object_visible render_8 0
+                                    0E31: set_render_object_visible render_9 0
+                                    0E31: set_render_object_visible render_10 1
+                                    0226: 1@ = actor $player_actor health
+                                    1@ -= 10
+                                    0223: set_actor $player_actor health_to 1@
+                                    05C1: AS_actor $PLAYER_ACTOR speak_from_audio_table 358
+                                    0A1A: actor $PLAYER_ACTOR perform_walk_animation "SHOT_partial_B" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 -1 ms // versionC
+                                    progress = 249
+                                    TIMERA = 0
+                                else
+                                    0E31: set_render_object_visible render_1 0
+                                    0E31: set_render_object_visible render_2 0
+                                    0E31: set_render_object_visible render_3 0
+                                    0E31: set_render_object_visible render_4 0
+                                    0E31: set_render_object_visible render_5 0
+                                    0E31: set_render_object_visible render_6 0
+                                    0E31: set_render_object_visible render_7 0
+                                    0E31: set_render_object_visible render_8 0
+                                    0E31: set_render_object_visible render_9 1
+                                    0E31: set_render_object_visible render_10 0
+                                    progress = 146
+                                    TIMERA = 0
+                                end
+                            end
+                        end
+                    end
+
+                end
+
+
+                //  анимация возврата
+                if and
+                    progress >= 346
+                    progress_event == false
+                then
+
+                    04C4: store_coords_to 0@ 1@ 2@ from_actor $player_actor with_offset 0.0 0.0 0.0
+                    0400: store_coords_to 3@ 4@ 5@ from_object obj_1 with_offset 0.0 0.0 0.0
+                    0E27: get_angle_from_two_coords 0@ 1@ and 3@ 4@ to 5@
+                    0177: set_object obj_1 Z_angle_to 5@
+
+                    // Анимация
+                    if
+                        timera > 70
+                    then
+                        if
+                            progress == 346
+                        then
+                            0E31: set_render_object_visible render_1 0
+                            0E31: set_render_object_visible render_2 0
+                            0E31: set_render_object_visible render_3 0
+                            0E31: set_render_object_visible render_4 1
+                            0E31: set_render_object_visible render_5 0
+                            0E31: set_render_object_visible render_6 0
+                            0E31: set_render_object_visible render_7 0
+                            0E31: set_render_object_visible render_8 0
+                            0E31: set_render_object_visible render_9 0
+                            0E31: set_render_object_visible render_10 0
+                            progress = 347
+                            TIMERA = 0
+                        else
+                            if
+                                progress == 347
+                            then
+                                0E31: set_render_object_visible render_1 1
+                                0E31: set_render_object_visible render_2 0
+                                0E31: set_render_object_visible render_3 0
+                                0E31: set_render_object_visible render_4 0
+                                0E31: set_render_object_visible render_5 0
+                                0E31: set_render_object_visible render_6 0
+                                0E31: set_render_object_visible render_7 0
+                                0E31: set_render_object_visible render_8 0
+                                0E31: set_render_object_visible render_9 0
+                                0E31: set_render_object_visible render_10 0
+                                progress = 0
+                                progress_event = true
+                                TIMERA = 0
+                            end
+                        end
+                    end
+
+                end
+
+                // проверки на урон
+
+                    0400: store_coords_to 0@ 1@ 2@ from_object obj_1 with_offset -3.0 -3.0 -2.0
+                    0400: store_coords_to 3@ 4@ 5@ from_object obj_1 with_offset 3.0 3.0 2.0
+                    if
+                        0356:   explosion_type -1 in_cube_cornerA 0@ 1@ 2@ cornerB 3@ 4@ 5@
+                    then
+                        gosub @Blood
+                        gosub @Exit
+                        break
+                    end
+
+                    0400: store_coords_to 1@ 2@ 3@ from_object obj_1 with_offset 0.0 0.0 0.0
+                    06C3: get_number_of_fires_within_sphere_at 1@ 2@ 3@ radius 1.5 store_to 4@
+                    if
+                        4@ > 0
+                    then
+                        gosub @Blood
+                        gosub @Exit
+                        break
+                    end
+
+
+                    // Если нанесен урон, например при выстреле
+                    071E: get_object obj_1 health_to 1@
+                    if
+                        1@ < 1000
+                    then
+                        gosub @Blood
+                        gosub @Exit
+                        break
+                    end
+
+
+                        // Пешеход наступит
+                        find = 0
+                        while get_any_char_no_save_recursive find progress_to find char_to find_kill
+                            if 03CA:   object obj_1 exists
+                            then
+                            else break
+                            end
+
+                            if
+                                0EE6: locate_char_distance_to_object find_kill object obj_1 radius 1.1
+                            then
+                                gosub @Blood
+                                gosub @Exit
+                                break
+                            end
+
+                        end
+
+
+                        // Машина наедет
+                        find = 0
+                        while get_any_car_no_save_recursive find progress_to find car_to find_kill
+                            if 03CA:   object obj_1 exists
+                            then
+                            else break
+                            end
+
+                            if
+                                0897:   car find_kill collided_with_object obj_1
+                            then
+                                gosub @Blood
+                                gosub @Exit
+                                break
+                            end
+
+                        end
+
+
+                else
+                    break
+                end
+                until not player.Defined(0)
+                if 03CA:   object obj_1 exists
+                then 01C4: remove_references_to_object obj_1 // This object will now disappear when the player looks away
+                end
+                wait 2000
+            end
+        end
+    end
+end
+
+
+:Blood
+0400: store_coords_to 1@ 2@ 3@ from_object obj_1 with_offset 0.0 0.0 0.0
+09B8: create_blood_gush_at 1@ 2@ 3@ with_offset 0.0 0.0 0.0 density 100 on_actor $player_actor
+0AAE: remove_audio_stream soundqa
+0AAE: remove_audio_stream soundqa_2
+0AC1: soundqa = load_audio_stream_with_3d_support "SoundsQa/SNAKEDEATH.mp3" // IF and SET
+0AC3: link_3d_audio_stream soundqa to_object obj_1
+0ABC: set_audio_stream soundqa volume volume_ini
+0AAD: set_audio_stream soundqa state 1
+0382: set_object obj_1 collision_detection 0
+0E31: set_render_object_visible render_1 0
+0E31: set_render_object_visible render_2 0
+0E31: set_render_object_visible render_3 0
+0E31: set_render_object_visible render_4 0
+0E31: set_render_object_visible render_5 0
+0E31: set_render_object_visible render_6 0
+0E31: set_render_object_visible render_7 0
+0E31: set_render_object_visible render_8 0
+0E31: set_render_object_visible render_9 0
+0E31: set_render_object_visible render_10 0
+wait 1000
+0AAE: remove_audio_stream soundqa
+0108: destroy_object obj_1
+return
+
+:Exit
+timera = 0
+repeat
+wait 0
+until not locate_char_distance_to_coordinates $player_actor pos 1@ 2@ 3@ radius 100.0
+return
