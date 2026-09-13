@@ -11,6 +11,14 @@ on:
       - "SoundsQa/**"
       - "tools/validate_release.py"
       - ".github/workflows/build-cleo.yml"
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - "cleo/*.txt"
+      - "ModelsQa/**"
+      - "SoundsQa/**"
+      - "tools/validate_release.py"
+      - ".github/workflows/build-cleo.yml"
 
 permissions:
   contents: write
@@ -26,6 +34,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Install official Sanny Builder
         shell: pwsh
@@ -86,15 +96,16 @@ jobs:
           if-no-files-found: error
 
       - name: Commit compiled scripts
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         shell: bash
         run: |
           if git diff --quiet -- cleo/SnakeQa.cs cleo/SnakeQb.cs; then
             echo "Compiled scripts are already current."
             exit 0
           fi
+          target_branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add cleo/SnakeQa.cs cleo/SnakeQb.cs
           git commit -m "Build corrected CLEO scripts [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin "HEAD:${target_branch}"
