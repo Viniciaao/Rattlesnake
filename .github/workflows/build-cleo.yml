@@ -52,12 +52,13 @@ jobs:
           $target = "$env:GITHUB_WORKSPACE\cleo\SnakeQa.cs"
           $diagnostics = "$env:GITHUB_WORKSPACE\compile-diagnostics.txt"
           Remove-Item $target -Force -ErrorAction SilentlyContinue
-          Push-Location $env:SANNY_DIR
-          & ".\sanny.exe" --no-splash --mode sa --compile `
-            "$env:GITHUB_WORKSPACE\cleo\SnakeQa.txt" `
-            $target
-          $exitCode = $LASTEXITCODE
-          Pop-Location
+          $arguments = @(
+            "--no-splash", "--mode", "sa", "--compile",
+            "$env:GITHUB_WORKSPACE\cleo\SnakeQa.txt", $target
+          )
+          $process = Start-Process -FilePath "$env:SANNY_DIR\sanny.exe" `
+            -ArgumentList $arguments -Wait -PassThru
+          $exitCode = $process.ExitCode
 
           "exitCode=$exitCode" | Set-Content $diagnostics
           "targetExists=$(Test-Path $target)" | Add-Content $diagnostics
@@ -76,7 +77,35 @@ jobs:
             throw "SnakeQa compilation failed with exit code $exitCode"
           }
 
-      - name: Preserve SnakeQa compiler log
+      - name: Compile SnakeQb
+        shell: pwsh
+        run: |
+          $target = "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs"
+          $diagnostics = "$env:GITHUB_WORKSPACE\compile-diagnostics.txt"
+          Remove-Item $target -Force -ErrorAction SilentlyContinue
+          $arguments = @(
+            "--no-splash", "--mode", "sa", "--compile",
+            "$env:GITHUB_WORKSPACE\cleo\SnakeQb.txt", $target
+          )
+          $process = Start-Process -FilePath "$env:SANNY_DIR\sanny.exe" `
+            -ArgumentList $arguments -Wait -PassThru
+          $exitCode = $process.ExitCode
+
+          "script=SnakeQb" | Set-Content $diagnostics
+          "exitCode=$exitCode" | Add-Content $diagnostics
+          "targetExists=$(Test-Path $target)" | Add-Content $diagnostics
+          Get-ChildItem $env:RUNNER_TEMP, $env:GITHUB_WORKSPACE -Filter "compile.log" -Recurse `
+            -ErrorAction SilentlyContinue | ForEach-Object {
+              $_.FullName | Add-Content $diagnostics
+              Get-Content $_.FullName | Add-Content $diagnostics
+            }
+          Get-Content $diagnostics
+
+          if ($exitCode -ne 0 -or -not (Test-Path $target)) {
+            throw "SnakeQb compilation failed with exit code $exitCode"
+          }
+
+      - name: Preserve compiler diagnostics
         if: failure()
         shell: bash
         run: |
@@ -95,21 +124,6 @@ jobs:
           git add -f compile-error.log
           git commit -m "Record CLEO compiler error [skip ci]"
           git push origin "HEAD:${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-
-      - name: Compile SnakeQb
-        shell: pwsh
-        run: |
-          Remove-Item "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs" -Force -ErrorAction SilentlyContinue
-          Push-Location $env:SANNY_DIR
-          & ".\sanny.exe" --no-splash --mode sa --compile `
-            "$env:GITHUB_WORKSPACE\cleo\SnakeQb.txt" `
-            "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs"
-          $exitCode = $LASTEXITCODE
-          if (Test-Path ".\compile.log") { Get-Content ".\compile.log" }
-          Pop-Location
-          if ($exitCode -ne 0 -or -not (Test-Path "$env:GITHUB_WORKSPACE\cleo\SnakeQb.cs")) {
-            throw "SnakeQb compilation failed with exit code $exitCode"
-          }
 
       - name: Validate release
         run: python tools/validate_release.py
