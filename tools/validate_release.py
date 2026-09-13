@@ -124,7 +124,13 @@ def validate_compiled(source_path: Path) -> None:
     source_size = int.from_bytes(data[marker + 4 : marker + 8], "little")
     embedded = data[marker + 8 : marker + 8 + source_size]
     expected = source_path.read_bytes()
-    if embedded != expected:
+
+    # Sanny Builder on Windows stores source metadata with CRLF even when the
+    # repository deliberately uses LF. Line endings do not affect bytecode.
+    def normalized_newlines(content: bytes) -> bytes:
+        return content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+    if normalized_newlines(embedded) != normalized_newlines(expected):
         fail(
             f"{compiled_path.relative_to(ROOT)} was not built from "
             f"{source_path.relative_to(ROOT)}"
