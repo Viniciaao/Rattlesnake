@@ -1,4 +1,0 @@
-script=SnakeQb
-exitCode=0
-targetExists=True
-validation failed: cleo\SnakeQa.txt must use consistent LF line endings

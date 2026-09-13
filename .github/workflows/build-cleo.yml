@@ -107,7 +107,9 @@ jobs:
 
       - name: Restore repository source line endings
         shell: bash
-        run: git checkout -- cleo/SnakeQa.txt cleo/SnakeQb.txt
+        run: |
+          git -c core.autocrlf=false cat-file blob HEAD:cleo/SnakeQa.txt > cleo/SnakeQa.txt
+          git -c core.autocrlf=false cat-file blob HEAD:cleo/SnakeQb.txt > cleo/SnakeQb.txt
 
       - name: Validate release
         shell: bash
