@@ -1,0 +1,12 @@
+* text=auto
+
+*.md text eol=lf
+*.txt text eol=lf
+*.ini text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+
+*.cs -text
+*.dff -text
+*.txd -text
+*.mp3 -text

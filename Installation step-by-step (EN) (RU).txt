@@ -1,7 +1,13 @@
-  
+
 
 (EN)
 
+RATTLESNAKE REQUIREMENTS:
+- Classic GTA San Andreas for Windows. Mobile and Definitive Edition are not supported.
+- ASI Loader and Mod Loader.
+- CLEO 4, CLEO+ 1.2.0 or newer, and NewOpcodes.
+- Keep the cleo, ModelsQa, and SoundsQa folders together inside the Rattlesnake mod folder.
+- Fully close and reopen the game after installation or after changing the Cobra setting. CLEO hot reload is not supported because special-model handles are process-specific.
 
   0. You must be able to read. Yes, strangely enough, not everyone can do it. If you were able to read this, then go straight to the next step;
 
@@ -19,7 +25,7 @@ https://www.mixmods.com.br/2022/10/open-limit-adjuster/
 
   4. Install: Throw the files III.VC.SA.LimitAdjuster.asi and III.VC.SA.LimitAdjuster.ini into the folder with the game;
 
-  5. Now you can install almost any modern modification. I'll tell you how to install my modifications: We throw the mod folder into the modloader folder. 
+  5. Now you can install almost any modern modification. I'll tell you how to install my modifications: We throw the mod folder into the modloader folder.
 For example, the Busy Pedestrians mod (Peds Events Project) is "Grand Theft Auto - San Andreas\modloader\Busy Pedestrians (Peds Events Project)". That's it! Now we launch the game and enjoy it.
 
   6. For all my modifications to work correctly, I recommend that you also use:
@@ -30,7 +36,7 @@ https://www.mixmods.com.br/2022/03/sa-mixsets/
 - [SA] SkyGfx v4.2b + Extended v1.7
 https://www.mixmods.com.br/2024/03/sa-skygfx/
 
-- [SA] Proper Fixes 
+- [SA] Proper Fixes
 https://www.mixmods.com.br/2024/10/sa-proper-fixes/
 
 - [SA] Peds Extender v1.1.4 (Fix, Restore and Vary Pedestrians)
@@ -61,6 +67,12 @@ https://www.mixmods.com.br/2022/09/crashinfo/
 
 (RU)
 
+ТРЕБОВАНИЯ RATTLESNAKE:
+- Классическая GTA San Andreas для Windows. Мобильная и Definitive Edition не поддерживаются.
+- ASI Loader и Mod Loader.
+- CLEO 4, CLEO+ 1.2.0 или новее и NewOpcodes.
+- Храните папки cleo, ModelsQa и SoundsQa вместе внутри папки мода Rattlesnake.
+- Полностью закройте и заново запустите игру после установки или изменения параметра Cobra. Горячая перезагрузка CLEO не поддерживается, так как дескрипторы специальных моделей действительны только в текущем процессе.
 
   0. Вы должны уметь читать. Да, как ни странно, это не все могут. Если вы смогли прочесть это, то переходите сразу к следующему шагу;
 
@@ -78,18 +90,18 @@ https://www.mixmods.com.br/2022/10/open-limit-adjuster/
 
   4. Устанавливаем: Кидаем файлы III.VC.SA.LimitAdjuster.asi и III.VC.SA.LimitAdjuster.ini в папку с игрой;
 
-  5. Теперь можете устанавливать почти любую современную модификацию. Расскажу как устанавливать мои модификации: Кидаем папку с модом в папку modloader. 
+  5. Теперь можете устанавливать почти любую современную модификацию. Расскажу как устанавливать мои модификации: Кидаем папку с модом в папку modloader.
 Например, мод Busy Pedestrians (Peds Events Project) - "Grand Theft Auto - San Andreas\modloader\Busy Pedestrians (Peds Events Project)". Всё! Теперь запускаем игру и наслаждаемся.
 
   6. Для корректной работы всех моих модификаций, рекомендую вам еще использовать:
- 
+
 - [SA] MixSets v4.3.7
 https://www.mixmods.com.br/2022/03/sa-mixsets/
 
 - [SA] SkyGfx v4.2b + Extended v1.7
 https://www.mixmods.com.br/2024/03/sa-skygfx/
 
-- [SA] Proper Fixes 
+- [SA] Proper Fixes
 https://www.mixmods.com.br/2024/10/sa-proper-fixes/
 
 - [SA] Peds Extender v1.1.4 (Fix, Restore and Vary Pedestrians)
