@@ -99,7 +99,7 @@ A workflow `.github/workflows/build-cleo.yml` usa Windows, baixa o Sanny Builder
 | Compilação de `SnakeQa.txt` com Sanny Builder 4.2.0 | passou |
 | Compilação de `SnakeQb.txt` com Sanny Builder 4.2.0 | passou |
 | `python3 tools/validate_release.py` com os novos `.cs` | passou |
-| GitHub Actions, execução `34730133135` | passou |
+| GitHub Actions, execução `34730359557` | passou |
 | DFFs encontrados e validados | 20 |
 | TXDs encontrados e validados | 1 |
 | MP3s encontrados com frames válidos | 5 |
