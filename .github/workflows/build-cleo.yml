@@ -105,6 +105,10 @@ jobs:
             throw "SnakeQb compilation failed with exit code $exitCode"
           }
 
+      - name: Restore repository source line endings
+        shell: bash
+        run: git checkout -- cleo/SnakeQa.txt cleo/SnakeQb.txt
+
       - name: Validate release
         shell: bash
         run: |
