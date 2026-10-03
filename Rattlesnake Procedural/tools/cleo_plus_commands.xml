@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Extra command definitions for the gta3sc compiler (GTA3Script).
+
+  These are the CLEO+ opcodes used by cleo/Snake_Procedural.sc, copied
+  verbatim from the definitions published by the CLEO+ author in
+  "(for developers)/gta3script/cleo.xml" -- https://github.com/JuniorDjjr/CLEOPlus
+
+  IDs, argument order and argument types must match the native layout, so do
+  not reorder them.  Keep this file in sync by running
+  tools/generate_cleo_plus_config.py against a CLEO+ checkout.
+
+  Build usage:
+    gta3sc compile cleo/Snake_Procedural.sc --config=gtasa --cs --guesser ^
+        -fno-entity-tracking --add-config="tools\cleo_plus_commands.xml"
+-->
+<GTA3Script>
+  <Commands>
+    <Command ID="0xD3A" Name="GET_COLLISION_BETWEEN_POINTS">
+      <Args>
+        <Arg Type="FLOAT" Desc="FromX"/>
+        <Arg Type="FLOAT" Desc="FromY"/>
+        <Arg Type="FLOAT" Desc="FromZ"/>
+        <Arg Type="FLOAT" Desc="ToX"/>
+        <Arg Type="FLOAT" Desc="ToY"/>
+        <Arg Type="FLOAT" Desc="ToZ"/>
+        <Arg Type="INT" Desc="Buildings"/>
+        <Arg Type="INT" Desc="Vehicles"/>
+        <Arg Type="INT" Desc="Peds"/>
+        <Arg Type="INT" Desc="Objects"/>
+        <Arg Type="INT" Desc="Dummies"/>
+        <Arg Type="INT" Desc="SeeThroughCheck"/>
+        <Arg Type="INT" Desc="CameraIgnoreCheck"/>
+        <Arg Type="INT" Desc="ShotThroughCheck"/>
+        <Arg Type="INT" Desc="EntityToIgnore"/>
+        <Arg Type="INT" Entity="COLPOINT"/>
+        <Arg Type="FLOAT" Desc="OutX" Out="true"/>
+        <Arg Type="FLOAT" Desc="OutY" Out="true"/>
+        <Arg Type="FLOAT" Desc="OutZ" Out="true"/>
+        <Arg Type="INT" Desc="Entity" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xD3B" Name="GET_COLPOINT_NORMAL_VECTOR">
+      <Args>
+        <Arg Type="INT" Entity="COLPOINT"/>
+        <Arg Type="FLOAT" Desc="X" Out="true"/>
+        <Arg Type="FLOAT" Desc="Y" Out="true"/>
+        <Arg Type="FLOAT" Desc="Z" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xD3C" Name="GET_COLPOINT_SURFACE">
+      <Args>
+        <Arg Type="INT" Entity="COLPOINT"/>
+        <Arg Type="INT" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xD3E" Name="GET_COLPOINT_DEPTH">
+      <Args>
+        <Arg Type="INT" Entity="COLPOINT"/>
+        <Arg Type="FLOAT" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xE6B" Name="GET_COLPOINT_LIGHTING">
+      <Args>
+        <Arg Type="INT" Entity="COLPOINT"/>
+        <Arg Type="INT" Desc="FromNight"/>
+        <Arg Type="INT" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xE2F" Name="DELETE_RENDER_OBJECT">
+      <Args>
+        <Arg Type="INT" Entity="RENDEROBJECT"/>
+      </Args>
+    </Command>
+    <Command ID="0xE31" Name="SET_RENDER_OBJECT_VISIBLE">
+      <Args>
+        <Arg Type="INT" Entity="RENDEROBJECT"/>
+        <Arg Type="INT" Desc="Bool"/>
+      </Args>
+    </Command>
+    <Command ID="0xE01" Name="CREATE_OBJECT_NO_SAVE">
+      <Args>
+        <Arg Type="INT" Enum="DEFAULTMODEL"/>
+        <Arg Type="FLOAT" Desc="X Coord"/>
+        <Arg Type="FLOAT" Desc="Y Coord"/>
+        <Arg Type="FLOAT" Desc="Z Coord"/>
+        <Arg Type="INT" Desc="UseOffset"/>
+        <Arg Type="INT" Desc="UseGround"/>
+        <Arg Type="INT" Out="true" Entity="OBJECT"/>
+      </Args>
+    </Command>
+    <Command ID="0xE27" Name="GET_ANGLE_FROM_TWO_COORDS">
+      <Args>
+        <Arg Type="FLOAT" Desc="X"/>
+        <Arg Type="FLOAT" Desc="Y"/>
+        <Arg Type="FLOAT" Desc="X"/>
+        <Arg Type="FLOAT" Desc="Y"/>
+        <Arg Type="FLOAT" Desc="Angle" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xE2D" Name="IS_GAME_FIRST_START">
+    </Command>
+    <Command ID="0xE4D" Name="RANDOM_PERCENT">
+      <Args>
+        <Arg Type="INT" Desc="Percent"/>
+      </Args>
+    </Command>
+    <Command ID="0xE6D" Name="GET_UNDERWATERNESS">
+      <Args>
+        <Arg Type="FLOAT" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xE6F" Name="STREAM_CUSTOM_SCRIPT_FROM_LABEL">
+      <Args>
+        <Arg Type="LABEL"/>
+        <Arg Type="PARAM" Optional="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xE70" Name="GET_LAST_CREATED_CUSTOM_SCRIPT">
+      <Args>
+        <Arg Type="INT" Desc="ScriptPointer" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xEE6" Name="LOCATE_CHAR_DISTANCE_TO_OBJECT">
+      <Args>
+        <Arg Type="INT" Entity="CHAR"/>
+        <Arg Type="INT" Entity="OBJECT"/>
+        <Arg Type="FLOAT" Desc="Radius"/>
+      </Args>
+    </Command>
+    <Command ID="0xEEA" Name="LOCATE_CHAR_DISTANCE_TO_COORDINATES">
+      <Args>
+        <Arg Type="INT" Entity="CHAR"/>
+        <Arg Type="FLOAT" Desc="X"/>
+        <Arg Type="FLOAT" Desc="Y"/>
+        <Arg Type="FLOAT" Desc="Z"/>
+        <Arg Type="FLOAT" Desc="Radius"/>
+      </Args>
+    </Command>
+    <Command ID="0xEF0" Name="GET_COORD_FROM_ANGLED_DISTANCE">
+      <Args>
+        <Arg Type="FLOAT" Desc="X"/>
+        <Arg Type="FLOAT" Desc="Y"/>
+        <Arg Type="FLOAT" Desc="Angle"/>
+        <Arg Type="FLOAT" Desc="Distance"/>
+        <Arg Type="FLOAT" Desc="X" Out="true"/>
+        <Arg Type="FLOAT" Desc="Y" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xF00" Name="LOAD_SPECIAL_MODEL">
+      <Args>
+        <Arg Type="STRING" Desc="DFF" AllowPointer="true" PreserveCase="true"/>
+        <Arg Type="STRING" Desc="TXD" AllowPointer="true" PreserveCase="true"/>
+        <Arg Type="INT" Entity="SPECIAL_MODEL" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xF01" Name="REMOVE_SPECIAL_MODEL">
+      <Args>
+        <Arg Type="INT" Entity="SPECIAL_MODEL"/>
+      </Args>
+    </Command>
+    <Command ID="0xF04" Name="CREATE_RENDER_OBJECT_TO_OBJECT_FROM_SPECIAL">
+      <Args>
+        <Arg Type="INT" Entity="OBJECT"/>
+        <Arg Type="INT" Entity="SPECIAL_MODEL"/>
+        <Arg Type="FLOAT" Desc="X"/>
+        <Arg Type="FLOAT" Desc="Y"/>
+        <Arg Type="FLOAT" Desc="Z"/>
+        <Arg Type="FLOAT" Desc="RX"/>
+        <Arg Type="FLOAT" Desc="RY"/>
+        <Arg Type="FLOAT" Desc="RZ"/>
+        <Arg Type="INT" Out="true" Entity="RENDEROBJECT"/>
+      </Args>
+    </Command>
+    <Command ID="0xF05" Name="GET_SPECIAL_MODEL_DATA">
+      <Args>
+        <Arg Type="INT" Entity="SPECIAL_MODEL"/>
+        <Arg Type="INT" Desc="Clump" Out="true"/>
+        <Arg Type="INT" Desc="Atomic" Out="true"/>
+        <Arg Type="INT" Desc="TxdIndex" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xF11" Name="GET_CLOSEST_WATER_DISTANCE">
+      <Args>
+        <Arg Type="FLOAT" Desc="Distance" Out="true"/>
+        <Arg Type="FLOAT" Desc="ClosestZ" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0xF10" Name="GET_ACTIVE_CAMERA_ROTATION">
+      <Args>
+        <Arg Type="FLOAT" Desc="X" Out="true"/>
+        <Arg Type="FLOAT" Desc="Y" Out="true"/>
+        <Arg Type="FLOAT" Desc="Z" Out="true"/>
+      </Args>
+    </Command>
+    <Command ID="0x485" Name="TRUE"/>
+    <Command ID="0x485" Name="RETURN_TRUE"/>
+    <Command ID="0x59A" Name="RETURN_FALSE"/>
+  </Commands>
+</GTA3Script>

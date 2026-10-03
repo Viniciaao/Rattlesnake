@@ -1,0 +1,76 @@
+name: Build procedural script
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - "Rattlesnake Procedural/cleo/**"
+      - "Rattlesnake Procedural/tools/**"
+      - "Rattlesnake Procedural/ModelsQa/**"
+      - "Rattlesnake Procedural/SoundsQa/**"
+      - ".github/workflows/build-procedural.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-procedural-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      PACKAGE: Rattlesnake Procedural
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+
+      - name: Install build toolchain
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends cmake g++ git python3
+
+      - name: Compile with gta3sc
+        shell: bash
+        working-directory: ${{ env.PACKAGE }}
+        run: tools/build.sh
+
+      - name: Validate package
+        shell: bash
+        working-directory: ${{ env.PACKAGE }}
+        run: python3 tools/validate_release.py
+
+      - name: Check compiled script is current
+        shell: bash
+        run: |
+          git diff --stat -- "Rattlesnake Procedural/cleo/Snake_Procedural.cs"
+
+      - name: Upload compiled script
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rattlesnake-procedural-script
+          path: Rattlesnake Procedural/cleo/Snake_Procedural.cs
+          if-no-files-found: error
+
+      - name: Commit compiled script
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          target="Rattlesnake Procedural/cleo/Snake_Procedural.cs"
+          if git diff --quiet -- "$target"; then
+            echo "Compiled script is already current."
+            exit 0
+          fi
+          target_branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "Build procedural snake script [skip ci]"
+          git push origin "HEAD:${target_branch}"
