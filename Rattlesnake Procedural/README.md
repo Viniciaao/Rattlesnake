@@ -94,6 +94,12 @@ Os valores podem ser editados com o jogo aberto: o script relê o arquivo a cada
 verificação. Aumentar `MaxSnakes` em jogo passa a valer a partir da próxima
 verificação; diminuir não mata as cobras que já existem.
 
+Se o arquivo `.ini` ou alguma chave não existir, cada leitura cai no valor padrão
+da tabela acima — inclusive as chaves de número inteiro. Isso é necessário
+porque o opcode de INI da CLEO escreve `0x80000000` na variável quando não
+encontra uma chave INT (`Volume = 0.6` & co. são FLOAT e nem são tocados), então
+toda leitura de INT no script tem o padrão declarado no próprio `IF NOT`.
+
 ### Modos de superfície
 
 O tipo de superfície vem da colisão do chão (`eSurfaceType` do GTA SA). Os
@@ -157,8 +163,38 @@ chaves usadas, limites de 40 m e 55 m), o XML de opcodes, os assets (RenderWare
 e MPEG válidos, com o uso exato de maiúsculas/minúsculas) e o `.cs` publicado
 (com `--compiled`, compara com uma compilação nova).
 
+Ele também protege três limites do SCM/CLEO que o compilador não verifica:
+
+| Invariante | Limite | Por quê |
+| --- | --- | --- |
+| Variáveis locais por escopo | 32 | A CLEO dá 32 variáveis por script (`0@`–`31@`); `32@`/`33@` são os timers logo depois na memória do thread. O gerente usa 31 e cada worker 29 |
+| `GOSUB` aninhados | 8 | A VM tem uma pilha fixa de sub-rotinas: mais que isso sem `RETURN` derruba o jogo. O script chega a 3 |
+| Padrão em toda leitura INT do INI | — | O opcode de INI escreve `0x80000000` na variável quando a chave não existe |
+
 A CI (`/.github/workflows/build-procedural.yml`) compila o gta3sc e o script em
 cada pull request, valida o pacote e atualiza o `.cs` versionado.
+
+### Boas práticas seguidas (e por quê)
+
+- **Threads filhas nunca terminam sozinhas** (`TERMINATE_THIS_CUSTOM_SCRIPT` só
+  existe no gerente antes de criar qualquer worker): a CLEO mantém um ponteiro
+  para cada filho no pai, e um filho que se remove deixa esse ponteiro pendurado.
+- **Cada cobra é uma thread filha** (`STREAM_CUSTOM_SCRIPT_FROM_LABEL`), o que dá
+  variáveis isoladas por cobra sem gastar uma cópia do bytecode — o filho
+  compartilha o bloco de código do pai, não a memória de variáveis.
+- **Buffer de colisão em `DUMP` + `GET_LABEL_POINTER`** em vez de
+  `ALLOCATE_MEMORY`: sem fragmentar a memória do processo e sem risco de
+  vazamento se o script for interrompido.
+- **Comunicação entre as threads por `SET/GET_CLEO_SHARED_VAR`** (as 1024
+  variáveis compartilhadas da CLEO), com uma thread por cobra lendo o seu próprio
+  trabalho; nenhum laço espera por outro.
+- **`WAIT` sempre presente**: o gerente espera `CheckInterval` e os workers
+  esperam por frame, então o mod nunca prende o processamento do jogo.
+- **Sem repetição de código**: as sub-rotinas (`ManagerFindSpot`,
+  `WorkerSnake`, `WorkerCleanup`...) são chamadas por `GOSUB`, dentro do limite de
+  aninhamento.
+- **Um escopo por thread**, com prefixos `mg_`/`wk_` para deixar claro o que é do
+  gerente e o que é de uma cobra.
 
 ## Limitações conhecidas
 

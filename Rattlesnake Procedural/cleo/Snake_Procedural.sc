@@ -238,14 +238,34 @@ LVAR_FLOAT mg_x mg_y mg_z1 mg_z2 mg_nz
 // Gerente: le o INI
 // ---------------------------------------------------------------------------
 ManagerReadIni:
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Enabled" (mg_enabled)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Chance" (mg_chance)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "CheckInterval" (mg_interval)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "MaxSnakes" (mg_max)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "InCities" (mg_cities)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Surfaces" (mg_surf_mode)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "AvoidCameraView" (mg_avoid_cam)
-    READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Debug" (mg_debug)
+    // O opcode de INI escreve 0x80000000 numa variavel INT quando o arquivo ou
+    // a chave nao existem (com FLOAT ele nao escreve nada, por isso os padroes
+    // de float ficam logo antes das leituras). Cada leitura de INT tem,
+    // portanto, o seu valor padrao no IF NOT.
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Enabled" (mg_enabled)
+        mg_enabled = 1
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Chance" (mg_chance)
+        mg_chance = 20
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "CheckInterval" (mg_interval)
+        mg_interval = 2000
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "MaxSnakes" (mg_max)
+        mg_max = 3
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "InCities" (mg_cities)
+        mg_cities = 1
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Surfaces" (mg_surf_mode)
+        mg_surf_mode = SURFMODE_NATURAL
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "AvoidCameraView" (mg_avoid_cam)
+        mg_avoid_cam = 1
+    ENDIF
+    IF NOT READ_INT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "Debug" (mg_debug)
+        mg_debug = 0
+    ENDIF
     READ_FLOAT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "SpawnRadius" (mg_radius)
     READ_FLOAT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "MinDistance" (mg_min)
     READ_FLOAT_FROM_INI_FILE "cleo\SnakeProcedural.ini" "Settings" "DespawnDistance" (mg_despawn)

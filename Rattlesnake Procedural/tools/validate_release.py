@@ -46,6 +46,13 @@ OLD_SPAWN_COORDINATES = (
     "1563.9517", "34.0211", "24.1641",
 )
 
+# The CLEO INI opcode clobbers INT variables when a key is missing; these are
+# the INT keys of this package and each one needs an explicit default.
+INT_INI_KEYS = (
+    "Enabled", "Chance", "CheckInterval", "MaxSnakes", "InCities", "Surfaces",
+    "AvoidCameraView", "Debug",
+)
+
 INI_KEYS = (
     "Enabled", "Chance", "CheckInterval", "MaxSnakes", "InCities", "Surfaces",
     "AvoidCameraView", "SpawnRadius", "MinDistance", "DespawnDistance",
@@ -122,7 +129,136 @@ def validate_source() -> str:
     if manager.count("TERMINATE_THIS_CUSTOM_SCRIPT") < 1 or manager.count("TERMINATE_THIS_CUSTOM_SCRIPT") > 4:
         fail(f"{relative}: unexpected amount of manager terminations")
 
+    # Every INT read from the INI must have a default, because the CLEO INI
+    # opcode writes the 0x80000000 sentinel into the variable when the file or
+    # the key is missing (FLOAT reads leave the variable untouched instead).
+    for key in INT_INI_KEYS:
+        guarded = 'IF NOT READ_INT_FROM_INI_FILE "cleo\\SnakeProcedural.ini" "Settings" "%s"' % key
+        if guarded not in source:
+            fail(f"{relative}: INT read of \"{key}\" has no default guard (use IF NOT ...)")
+
+    validate_local_var_budget(source, relative)
+    validate_gosub_depth(source, relative)
+
     return source
+
+
+# The script VM keeps a fixed subroutine stack: more than 8 nested GOSUBs
+# without a RETURN crashes the game.
+GOSUB_LIMIT = 8
+
+_LABEL = re.compile(r"^(\w+):\s*$")
+_GOSUB = re.compile(r"^GOSUB\s+(\w+)\s*$")
+
+
+def validate_gosub_depth(source: str, relative: Path) -> None:
+    """Walk the GOSUB call graph and fail if any path nests too deeply."""
+
+    bodies: dict[str, list[str]] = {"<start>": []}
+    current = "<start>"
+    for raw in source.splitlines():
+        line = raw.split("//", 1)[0].strip()
+        label = _LABEL.match(line)
+        if label:
+            current = label.group(1)
+            bodies.setdefault(current, [])
+            continue
+        bodies.setdefault(current, []).append(line)
+
+    calls: dict[str, list[str]] = {}
+    for name, lines in bodies.items():
+        calls[name] = [_GOSUB.match(line).group(1) for line in lines if _GOSUB.match(line)]
+
+    unknown = sorted({target for targets in calls.values() for target in targets if target not in bodies})
+    if unknown:
+        fail(f"{relative}: GOSUB to unknown label(s): {', '.join(unknown)}")
+
+    worst = 0
+    worst_chain: list[str] = []
+
+    def walk(name: str, chain: list[str]) -> None:
+        nonlocal worst, worst_chain
+        if len(chain) > worst:
+            worst, worst_chain = len(chain), list(chain)
+        for target in calls.get(name, []):
+            if target in chain:  # recursive GOSUB would never return
+                fail(f"{relative}: recursive GOSUB {' -> '.join(chain + [target])}")
+            walk(target, chain + [target])
+
+    # Every label is walked, so a too-deep chain is caught even when it is not
+    # reachable from the entry point right now.
+    for name in sorted(bodies):
+        walk(name, [name])
+
+    if worst > GOSUB_LIMIT:
+        fail(
+            f"{relative}: GOSUB nesting of {worst} exceeds the safe limit of {GOSUB_LIMIT} "
+            f"({' -> '.join(worst_chain)}), which crashes the game"
+        )
+
+
+# CLEO 4 gives every custom script 32 local variables (0@..31@); 32@/33@ are the
+# two timers, which live in the fields right after them. A scope that declares
+# more than that would spill into the timers and into the rest of the thread
+# object at runtime, so the compiler output alone is not enough of a guarantee.
+LOCAL_VAR_LIMIT = 32
+
+_DECLARATION = re.compile(r"^(LVAR_INT|LVAR_FLOAT|LVAR_TEXT_LABEL16|LVAR_TEXT_LABEL|VAR_INT|VAR_FLOAT)\s+(.*)$")
+_ARRAY_ITEM = re.compile(r"^(\w+)\[(\d+)\]$")
+
+
+def validate_local_var_budget(source: str, relative: Path) -> None:
+    """Count the local variables of every scope and enforce the CLEO limit.
+
+    Text labels take 2 variables, LABEL16 takes 4, arrays take one per item.
+    Global (`VAR_*`) declarations do not use the local space and are ignored.
+    """
+
+    scopes: list[tuple[int, int, list[str]]] = []
+    current: dict[int, list] = {}
+    depth = 0
+    for number, raw in enumerate(source.splitlines(), 1):
+        line = raw.split("//", 1)[0].strip()
+        for _ in range(line.count("{")):
+            depth += 1
+            current.setdefault(depth, [number, 0, []])
+        declaration = _DECLARATION.match(line)
+        if declaration and not declaration.group(1).startswith("VAR_"):
+            kind, names = declaration.group(1), declaration.group(2).split()
+            total = 0
+            for name in names:
+                name = name.rstrip(",")
+                item = _ARRAY_ITEM.match(name)
+                if item:
+                    name, size = item.group(1), int(item.group(2))
+                elif kind == "LVAR_TEXT_LABEL":
+                    size = 2
+                elif kind == "LVAR_TEXT_LABEL16":
+                    size = 4
+                else:
+                    size = 1
+                total += size
+                scope = current.setdefault(depth, [number, 0, []])
+                scope[0] = min(scope[0], number)
+                scope[2].append(name if size == 1 else f"{name}x{size}")
+            scope = current.setdefault(depth, [number, 0, []])
+            scope[1] += total
+        closes = line.count("}")
+        for _ in range(closes):
+            scope = current.pop(depth, None)
+            if scope is not None:
+                scopes.append((scope[0], scope[1], scope[2]))
+            depth -= 1
+
+    if not scopes:
+        fail(f"{relative}: no variable scope found")
+
+    for start, total, names in sorted(scopes):
+        if total > LOCAL_VAR_LIMIT:
+            fail(
+                f"{relative}: scope starting at line {start} declares {total} local "
+                f"variables, above the CLEO limit of {LOCAL_VAR_LIMIT} ({', '.join(names)})"
+            )
 
 
 def validate_ini(source: str) -> None:
