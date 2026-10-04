@@ -59,6 +59,37 @@ INI_KEYS = (
     "Volume", "Debug",
 )
 
+# Commands that gta3sc accepts inside IF/AND/WHILE because they are marked as
+# conditions in the Sanny Builder Library. Anything else (por exemplo
+# GET_COLPOINT_SURFACE, 0xD3C) tem de ser chamado solto: dentro de um IF o
+# desvio passa a depender do resultado da condicao anterior.
+CONDITION_COMMANDS = frozenset((
+    "DOES_OBJECT_EXIST",
+    "GET_COLLISION_BETWEEN_POINTS",
+    "GET_DYNAMIC_LIBRARY_PROCEDURE",
+    "GET_LAST_CREATED_CUSTOM_SCRIPT",
+    "GET_RANDOM_CAR_IN_SPHERE_NO_SAVE_RECURSIVE",
+    "GET_RANDOM_CHAR_IN_SPHERE_NO_SAVE_RECURSIVE",
+    "IS_CHAR_IN_ANY_CAR",
+    "IS_EXPLOSION_IN_AREA",
+    "IS_PLAYER_PLAYING",
+    "IS_VEHICLE_TOUCHING_OBJECT",
+    "LOAD_3D_AUDIO_STREAM",
+    "LOAD_DYNAMIC_LIBRARY",
+    "LOAD_SPECIAL_MODEL",
+    "LOCATE_CHAR_DISTANCE_TO_COORDINATES",
+    "LOCATE_CHAR_DISTANCE_TO_OBJECT",
+    "RANDOM_PERCENT",
+    "READ_FLOAT_FROM_INI_FILE",
+    "READ_INT_FROM_INI_FILE",
+    "READ_STRING_FROM_INI_FILE",
+    "TIMERA", "TIMERB",  # pseudo-variaveis de comparacao, nao comandos
+    "TRUE", "FALSE",
+))
+
+_CONDITION_USE = re.compile(r"\b(IF|AND|OR|WHILE)\s+(NOT\s+)?([A-Z][A-Z0-9_]*)")
+_CONST_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
+
 
 def fail(message: str) -> None:
     raise AssertionError(message)
@@ -168,6 +199,44 @@ def validate_source() -> str:
         if "GET_COLLISION_BETWEEN_POINTS" in line and re.search(r"\s-1\s", line):
             fail(f"{relative}: GET_COLLISION_BETWEEN_POINTS com EntityToIgnore = -1 "
                  "(ponteiro invalido; use 0)")
+
+    # Um comando que NAO e condicao nao pode ser usado dentro de IF/AND (nem
+    # de WHILE): o compilador aceita, mas quem decide o desvio e o resultado da
+    # ultima condicao de verdade. Isso fazia "IF GET_COLPOINT_SURFACE ..."
+    # reprovar todas as tentativas com motivo 3 e nenhuma cobra nascia.
+    # A lista abaixo sao os comandos realmente marcados como is_condition no
+    # Sanny Builder Library; TIMERA/TIMERB sao pseudo-variaveis de comparacao.
+    for raw in source.splitlines():
+        code = raw.split("//", 1)[0]
+        for match in _CONDITION_USE.finditer(code):
+            name = match.group(3)
+            if name == "NOT":
+                # "AND NOT mg_x > 1": o NOT pertence a comparacao seguinte.
+                continue
+            if name in CONDITION_COMMANDS:
+                continue
+            fail(f"{relative}: '{name}' nao e um comando de condicao mas foi "
+                 f"usado dentro de {match.group(1)} (chame solto e teste o valor)")
+
+    # Argumentos de comando formatado vao direto para o sprintf do CLEO. Com
+    # CONST_INT o gta3sc emite o NOME da constante como STRING (bug do
+    # compilador), o que desalinha todos os %i da linha: so variaveis e
+    # numeros podem entrar como vararg.
+    for raw in source.splitlines():
+        code = raw.split("//", 1)[0]
+        for command in ("WRITE_FORMATTED_STRING_TO_FILE", "PRINT_FORMATTED_NOW"):
+            if command not in code:
+                continue
+            rest = code.split(command, 1)[1]
+            quoted = re.search(r'f?"[^"]*"', rest)
+            if not quoted:
+                continue
+            for token in rest[quoted.end():].split():
+                token = token.strip('()')
+                if _CONST_NAME.fullmatch(token):
+                    fail(f"{relative}: constante {token} como vararg de "
+                         f"{command} (o gta3sc escreve o nome dela como texto); "
+                         "passe por uma variavel")
 
     # Every INT read from the INI must have a default, because the CLEO INI
     # opcode writes the 0x80000000 sentinel into the variable when the file or

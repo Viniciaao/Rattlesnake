@@ -197,7 +197,10 @@ LVAR_FLOAT mg_x mg_y mg_z1 mg_z2 mg_nz
 
     // Aviso de que o script esta vivo: apareceu na tela = gerente rodando.
     IF mg_debug = 1
-        PRINT_FORMATTED_NOW "Rattlesnake Procedural: %i quadros, %i threads, chance %i%%" 6000 FRAMES mg_workers mg_chance
+        // FRAMES vai por variavel: como CONST_INT o gta3sc escreveria o nome
+        // da constante como texto (ver o comentario do log).
+        mg_obj = FRAMES
+        PRINT_FORMATTED_NOW "Rattlesnake Procedural: %i quadros, %i threads, chance %i%%" 6000 mg_obj mg_workers mg_chance
     ENDIF
 
     // ---- log em arquivo ----
@@ -207,8 +210,13 @@ LVAR_FLOAT mg_x mg_y mg_z1 mg_z2 mg_nz
     // gta3script nao interpreta escapes dentro de string.
     OPEN_FILE "cleo\Rattlesnake_procedural.log" "w" (mg_j)
     IF mg_j > 0
-        WRITE_FORMATTED_STRING_TO_FILE mg_j "=== Rattlesnake Procedural ===%c" 10
-        WRITE_FORMATTED_STRING_TO_FILE mg_j "CLEO+ 0x%x | quadros %i/10 | threads %i | debug %i%c" mg_i FRAMES mg_workers mg_debug 10
+        WRITE_FORMATTED_STRING_TO_FILE mg_j "=== Rattlesnake Procedural v2 ===%c" 10
+        // FRAMES nao pode ir direto como vararg: com CONST_INT o gta3sc
+        // escreve o NOME da constante como texto (bug do compilador), o que
+        // desalinha todos os %i da linha. Passando por uma variavel o valor
+        // sai certo. mg_i tem a versao do CLEO+ e mg_k esta livre aqui.
+        mg_k = FRAMES
+        WRITE_FORMATTED_STRING_TO_FILE mg_j "CLEO+ 0x%x | quadros %i | threads %i | debug %i%c" mg_i mg_k mg_workers mg_debug 10
         WRITE_FORMATTED_STRING_TO_FILE mg_j "chance %i%% | max %i | raio %.1f | min %.1f | despawn %.1f%c" mg_chance mg_max mg_radius mg_min mg_despawn 10
         WRITE_FORMATTED_STRING_TO_FILE mg_j "surfaces %i | cidades %i | evita camera %i%c" mg_surf_mode mg_cities mg_avoid_cam 10
         CLOSE_FILE mg_j
@@ -373,6 +381,7 @@ ManagerFindSpot:
         mg_try += 1
         mg_ok = 1
         mg_why = 0
+        mg_surf = 0   // o log nunca mostra o material de outra tentativa
 
         GET_PLAYER_CHAR 0 (mg_j)
         IF NOT IS_PLAYER_PLAYING 0
@@ -435,8 +444,25 @@ ManagerFindSpot:
             // o CLEO+ repassa o valor direto para CWorld::pIgnoreEntity, que e
             // um ponteiro de verdade, e 0xFFFFFFFF nao existe.
             IF GET_COLLISION_BETWEEN_POINTS (mg_x mg_y mg_z1) (mg_x mg_y mg_z2) TRUE FALSE FALSE FALSE FALSE TRUE TRUE TRUE 0 mg_cp (mg_x mg_y mg_z1 mg_j)
-                IF GET_COLPOINT_SURFACE mg_cp (mg_surf)
-                    GET_COLPOINT_NORMAL_VECTOR mg_cp (mg_nz mg_nz mg_nz)
+                // 0xD3C e 0xD3B NAO sao condicoes no CLEO+ (0xD3A e). Usar
+                // uma delas dentro de IF deixa o resultado do IF indefinido -
+                // era isso que recusava TODAS as tentativas com motivo 3, em
+                // qualquer lugar do mapa, e nenhuma cobra nascia. Aqui elas
+                // sao chamadas soltas (como no script de teste do CLEO+) e o
+                // valor lido e testado logo depois.
+                GET_COLPOINT_SURFACE mg_cp (mg_surf)
+                GET_COLPOINT_NORMAL_VECTOR mg_cp (mg_nz mg_nz mg_nz)
+                // superficie valida vai de 1 a 178; 0 significa que o
+                // colpoint nao foi preenchido (ponteiro recusado pelo CLEO+).
+                IF NOT mg_surf > 0
+                    mg_ok = 0
+                    mg_why = 3
+                ENDIF
+                IF mg_surf > 178
+                    mg_ok = 0
+                    mg_why = 3
+                ENDIF
+                IF mg_ok = 1
                     GOSUB ManagerSurfaceAllowed
                     IF mg_ok = 1
                     AND NOT mg_nz > 0.75
@@ -445,8 +471,12 @@ ManagerFindSpot:
                     ENDIF
                     IF mg_ok = 1
                     AND mg_cities = 0
-                        GET_CITY_FROM_COORDS mg_x mg_y mg_z1 (mg_surf)
-                        IF NOT mg_surf = CITY_COUNTRYSIDE
+                        // mg_k esta livre aqui (o gerente so reusa ele
+                        // depois desta sub, para abrir o log da cobra)
+                        // e mg_surf nao pode ser sobrescrito: ele aparece
+                        // no log da cobra criada.
+                        GET_CITY_FROM_COORDS mg_x mg_y mg_z1 (mg_k)
+                        IF NOT mg_k = CITY_COUNTRYSIDE
                             mg_ok = 0  // dentro de cidade (LS/SF/LV)
                             mg_why = 6
                         ENDIF
@@ -454,9 +484,6 @@ ManagerFindSpot:
                     IF mg_ok = 1
                         mg_found = 1
                     ENDIF
-                ELSE
-                    mg_ok = 0
-                    mg_why = 3
                 ENDIF
             ELSE
                 mg_ok = 0
@@ -473,6 +500,11 @@ ManagerFindSpot:
             OPEN_FILE "cleo\Rattlesnake_procedural.log" "a" (mg_obj)
             IF mg_obj > 0
                 WRITE_FORMATTED_STRING_TO_FILE mg_obj "tentativa %i surf %i ok %i motivo %i%c" mg_try mg_surf mg_ok mg_why 10
+                // Linha extra de diagnostico (so com Debug = 1): mostra
+                // o raio, o ponteiro do colpoint, a normal e a entidade
+                // atingida. cp com valor baixo (ou 00000000) = o CLEO+
+                // recusou o ponteiro e nada foi escrito no buffer.
+                WRITE_FORMATTED_STRING_TO_FILE mg_obj "  ponto %.1f %.1f | z %.1f ate %.1f | cp %p | nz %.2f | ent %p%c" mg_x mg_y mg_z1 mg_z2 mg_cp mg_nz mg_j 10
                 CLOSE_FILE mg_obj
             ENDIF
         ENDIF

@@ -125,10 +125,16 @@ O que o log diz:
 - **arquivo não existe (ou está vazio) depois de abrir o jogo** — o script nem
   chegou a rodar: confira se `Snake_Procedural.cs` está em `CLEO\` (não em
   subpastas), se o CLEO/ASI Loader está ativo e se o jogo é a versão de PC.
+- **a primeira linha é `=== Rattlesnake Procedural v2 ===`** — confirma que o
+  `.cs` em uso é esta versão corrigida (a v1 recusava todas as tentativas com
+  motivo 3, veja "Armadilhas do gta3script" abaixo).
 - **só o cabeçalho (4 linhas)** — o script rodou e parou antes de criar as
   threads; a tela mostra o motivo em vermelho (CLEO+ ausente/antigo, modelos).
 - **linhas `tentativa ...`** — o gerente está procurando lugar: `surf` é o
   material que o jogo devolveu e `ok 0` é recusa, com o motivo no fim da linha.
+  Cada tentativa vem seguida de uma segunda linha (`ponto ... | z ... | cp ... |
+  nz ... | ent ...`) com o raio vertical usado, o ponteiro do colpoint, a normal
+  do chão e a entidade atingida — é ela que diz *onde* a regra falhou.
 - **linhas `cobra criada em ...`** — o mod chegou a criar cobras (aparecem mesmo
   com `Debug = 0`, de propósito).
 
@@ -142,9 +148,9 @@ O que o log diz:
 | `Rattlesnake: tentativa N surf M ok 1 motivo 0` | Uma tentativa que passou em todas as regras: a cobra foi criada ali. |
 | `Rattlesnake: tentativa N surf M ok 0 motivo 1` | O ponto sorteado estava dentro do campo de visão da câmera (a cobra nasceria na tela). Com `AvoidCameraView = 1` isso é normal; se *todas* as tentativas caírem aqui, teste com `AvoidCameraView = 0`. |
 | `... motivo 2` | O raio vertical não achou chão nenhum (coordenada em interior/lugar sem colisão). |
-| `... motivo 3` | O jogo não devolveu o material do colpoint: a superfície não pode ser conferida, então a tentativa é descartada. |
+| `... motivo 3` | O jogo não devolveu um material de superfície válido (0 ou acima de 178): o colpoint não foi preenchido e a tentativa é descartada. A linha `ponto ... cp ...` logo abaixo mostra o ponteiro usado; `cp 00000000` confirma que o CLEO+ recusou o ponteiro. |
 | `... motivo 4` | O material do chão não é permitido pelo modo `Surfaces` (quase sempre asfalto/calçada/concreto com `Surfaces = 0` ou `1`). Teste com `Surfaces = 2` para ver se a cobra nasce. |
-| `... motivo 5` | Terreno íngreme demais (`> 0.75` de inclinação no vetor normal). |
+| `... motivo 5` | Terreno íngreme demais (`> 0.75` de inclinação no vetor normal). Se vier junto com `nz 0.00` **e** `cp 00000000`, não é o terreno: o buffer do colpoint não foi preenchido. |
 | `... motivo 6` | O ponto está em Los Santos/San Fierro/Las Venturas e `InCities = 0`. |
 | `... motivo 9` | O jogador não está em jogo (carregando, menu, missão com o ped trocado). |
 | `Rattlesnake: nenhum ponto valido (8 tentativas)` | As 8 tentativas daquela verificação falharam — os motivos de cada uma vieram nas linhas anteriores. |
@@ -247,6 +253,24 @@ cada pull request, valida o pacote e atualiza o `.cs` versionado.
   30 s) antes de liberar espaço para outra, como no script original.
 - O `SnakeModels.ini` do mod original não é usado: os 10 quadros são carregados
   uma vez pela thread gerente e reaproveitados por todas as cobras.
+
+### Armadilhas do gta3script (leia antes de mexer no `.sc`)
+
+Duas coisas que o compilador aceita sem reclamar, mas que quebram o script em
+tempo de execução. As duas são barradas por `tools/validate_release.py`:
+
+1. **Comando que não é condição dentro de `IF`/`AND`/`WHILE`.** O gta3sc compila
+   `IF GET_COLPOINT_SURFACE ...` sem erro, mas quem decide o desvio é o
+   resultado da última condição *de verdade* — o `IF` nunca dá o que você
+   espera. Foi exatamente isso que fazia **todas** as tentativas de nascimento
+   serem recusadas com `motivo 3` (nenhuma cobra nascia em lugar nenhum). No
+   CLEO+ só `0xD3A` (`GET_COLLISION_BETWEEN_POINTS`) é condição; `0xD3C`
+   (`GET_COLPOINT_SURFACE`), `0xD3B` e `0xD3E` são comandos comuns: chame solto
+   e teste o valor devolvido.
+2. **Constante como argumento de comando formatado.** Como `CONST_INT FRAMES`
+   não é uma variável, o gta3sc emite o *nome* da constante como texto no meio
+   dos parâmetros, desalinhando todos os `%i`/`%.1f` da linha. Passe o valor por
+   uma variável (`mg_k = FRAMES` e use `mg_k`).
 
 ## Créditos
 
