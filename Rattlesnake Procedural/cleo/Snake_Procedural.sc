@@ -433,6 +433,7 @@ ManagerFindSpot:
                 AND NOT mg_ang > 55.0
                     mg_ok = 0
                     mg_why = 1
+                    mg_j = 0   // nada foi lancado: 'ent 0' na linha do log
                 ENDIF
             ENDIF
         ENDIF

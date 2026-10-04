@@ -134,7 +134,8 @@ O que o log diz:
   material que o jogo devolveu e `ok 0` é recusa, com o motivo no fim da linha.
   Cada tentativa vem seguida de uma segunda linha (`ponto ... | z ... | cp ... |
   nz ... | ent ...`) com o raio vertical usado, o ponteiro do colpoint, a normal
-  do chão e a entidade atingida — é ela que diz *onde* a regra falhou.
+  do chão e a entidade atingida (`ent 0` = o raio não achou nada; tentativa
+  recusada pela câmera nem chega a lançar o raio).
 - **linhas `cobra criada em ...`** — o mod chegou a criar cobras (aparecem mesmo
   com `Debug = 0`, de propósito).
 
