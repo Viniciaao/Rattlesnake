@@ -40,6 +40,7 @@ CONST_INT SV_ALIVE          901         // cobras vivas
 CONST_INT SV_REQUEST        902         // 1 = existe um objeto esperando
 CONST_INT SV_PENDING_OBJ    903         // handle do objeto criado pelo gerente
 CONST_INT SV_ENABLED        904         // copia do "Enabled" do INI
+CONST_INT SV_DEBUG          905         // copia do "Debug" do INI
 CONST_INT SV_MODEL_BASE     910         // 910..919 = handles dos 10 quadros
 
 // Superficies do GTA SA (eSurfaceType). Ver README.md para a lista completa.
@@ -68,7 +69,7 @@ CONST_INT CITY_COUNTRYSIDE  0
 // ---------------------------------------------------------------------------
 LVAR_INT   mg_enabled mg_chance mg_max mg_cities mg_surf_mode mg_debug
 LVAR_INT   mg_avoid_cam mg_interval mg_workers mg_i mg_j mg_k
-LVAR_INT   mg_found mg_try mg_cp mg_surf mg_obj mg_ok
+LVAR_INT   mg_found mg_try mg_cp mg_surf mg_obj mg_ok mg_why
 
 LVAR_FLOAT mg_radius mg_min mg_despawn
 LVAR_FLOAT mg_px mg_py mg_pz mg_ang mg_dist
@@ -94,6 +95,7 @@ LVAR_FLOAT mg_x mg_y mg_z1 mg_z2 mg_nz
     GOSUB ManagerReadIni
 
     // ---- exige CLEO+ 1.2.0 ou superior ----
+    mg_i = 0   // versao do CLEO+ (0 = nao deu para perguntar); usada no log
     IF LOAD_DYNAMIC_LIBRARY "CLEO+.cleo" (mg_j)
         IF GET_DYNAMIC_LIBRARY_PROCEDURE "GetCleoPlusVersion" mg_j (mg_k)
             CALL_FUNCTION_RETURN mg_k 0 0 ()(mg_i)
@@ -172,6 +174,7 @@ LVAR_FLOAT mg_x mg_y mg_z1 mg_z2 mg_nz
     SET_CLEO_SHARED_VAR SV_REQUEST 0
     SET_CLEO_SHARED_VAR SV_PENDING_OBJ 0
     SET_CLEO_SHARED_VAR SV_ENABLED mg_enabled
+    SET_CLEO_SHARED_VAR SV_DEBUG mg_debug
 
     // ---- cria as threads trabalhadoras ----
     mg_workers = 0
@@ -185,54 +188,92 @@ LVAR_FLOAT mg_x mg_y mg_z1 mg_z2 mg_nz
         ENDIF
     ENDWHILE
 
+    // Se nenhuma thread nasceu, nada mais acontece e sem esta mensagem o mod
+    // ficaria em silencio absoluto (era o pior caso para diagnostico).
+    IF mg_workers = 0
+        PRINT_STRING_NOW "~r~Rattlesnake Procedural: falha ao criar as threads (CLEO+ 1.2.0+?)." 7000
+        TERMINATE_THIS_CUSTOM_SCRIPT
+    ENDIF
+
+    // Aviso de que o script esta vivo: apareceu na tela = gerente rodando.
+    IF mg_debug = 1
+        PRINT_FORMATTED_NOW "Rattlesnake Procedural: %i quadros, %i threads, chance %i%%" 6000 FRAMES mg_workers mg_chance
+    ENDIF
+
+    // ---- log em arquivo ----
+    // cleo\Rattlesnake_procedural.log e reescrito a cada partida: se o arquivo
+    // nao existir (ou estiver vazio) depois de abrir o jogo, o script nem
+    // chegou aqui. O "%c" recebendo 10 no fim de cada linha e o \n, porque o
+    // gta3script nao interpreta escapes dentro de string.
+    OPEN_FILE "cleo\Rattlesnake_procedural.log" "w" (mg_j)
+    IF mg_j > 0
+        WRITE_FORMATTED_STRING_TO_FILE mg_j "=== Rattlesnake Procedural ===%c" 10
+        WRITE_FORMATTED_STRING_TO_FILE mg_j "CLEO+ 0x%x | quadros %i/10 | threads %i | debug %i%c" mg_i FRAMES mg_workers mg_debug 10
+        WRITE_FORMATTED_STRING_TO_FILE mg_j "chance %i%% | max %i | raio %.1f | min %.1f | despawn %.1f%c" mg_chance mg_max mg_radius mg_min mg_despawn 10
+        WRITE_FORMATTED_STRING_TO_FILE mg_j "surfaces %i | cidades %i | evita camera %i%c" mg_surf_mode mg_cities mg_avoid_cam 10
+        CLOSE_FILE mg_j
+    ENDIF
+
     // ---- laco principal ----
-    WHILE TRUE
-        WAIT mg_interval
-        GOSUB ManagerReadIni
-        SET_CLEO_SHARED_VAR SV_ENABLED mg_enabled
+    // Sem "WHILE TRUE": no gta3script o TRUE vira o opcode 0x485
+    // (IS_PC_VERSION), que nao e um valor booleano. O laco com rotulo e GOTO
+    // faz o mesmo e e o mesmo padrao usado no WorkerLoop.
+ManagerLoop:
+    WAIT mg_interval
+    GOSUB ManagerReadIni
+    SET_CLEO_SHARED_VAR SV_ENABLED mg_enabled
+    SET_CLEO_SHARED_VAR SV_DEBUG mg_debug
 
-        IF mg_enabled = 1
-            // o INI pode pedir mais cobras do que as threads criadas no inicio
-            WHILE mg_workers < mg_max
-            AND NOT mg_workers = MAX_WORKERS
-                STREAM_CUSTOM_SCRIPT_FROM_LABEL SnakeWorker
-                IF GET_LAST_CREATED_CUSTOM_SCRIPT (mg_obj)
-                    mg_workers += 1
-                ELSE
-                    mg_workers = MAX_WORKERS
-                ENDIF
-            ENDWHILE
+    IF mg_enabled = 1
+        // o INI pode pedir mais cobras do que as threads criadas no inicio
+        WHILE mg_workers < mg_max
+        AND NOT mg_workers = MAX_WORKERS
+            STREAM_CUSTOM_SCRIPT_FROM_LABEL SnakeWorker
+            IF GET_LAST_CREATED_CUSTOM_SCRIPT (mg_obj)
+                mg_workers += 1
+            ELSE
+                mg_workers = MAX_WORKERS
+            ENDIF
+        ENDWHILE
 
-            GET_CLEO_SHARED_VAR SV_REQUEST (mg_k)
-            IF mg_k = 0
-                GET_CLEO_SHARED_VAR SV_ALIVE (mg_i)
-                GET_CLEO_SHARED_VAR SV_IDLE (mg_j)
-                IF mg_i < mg_max
-                AND mg_j > 0
-                    IF RANDOM_PERCENT mg_chance
-                        GOSUB ManagerFindSpot
-                        IF mg_found = 1
-                            CREATE_OBJECT_NO_SAVE OBJ_MODEL mg_x mg_y mg_z1 FALSE TRUE (mg_obj)
-                            IF DOES_OBJECT_EXIST mg_obj
-                                // o modelo 1672 nao deve aparecer: quem desenha a
-                                // cobra sao os render objects (0xF04)
-                                SET_OBJECT_SCALE mg_obj 0.0
-                                SET_CLEO_SHARED_VAR SV_PENDING_OBJ mg_obj
-                                SET_CLEO_SHARED_VAR SV_REQUEST 1
-                                IF mg_debug = 1
-                                    PRINT_FORMATTED_NOW "Rattlesnake: cobra em %.1f %.1f %.1f" 2500 mg_x mg_y mg_z1
-                                ENDIF
+        GET_CLEO_SHARED_VAR SV_REQUEST (mg_k)
+        IF mg_k = 0
+            GET_CLEO_SHARED_VAR SV_ALIVE (mg_i)
+            GET_CLEO_SHARED_VAR SV_IDLE (mg_j)
+            IF mg_i < mg_max
+            AND mg_j > 0
+                IF RANDOM_PERCENT mg_chance
+                    GOSUB ManagerFindSpot
+                    IF mg_found = 1
+                        CREATE_OBJECT_NO_SAVE OBJ_MODEL mg_x mg_y mg_z1 FALSE TRUE (mg_obj)
+                        IF DOES_OBJECT_EXIST mg_obj
+                            // o modelo 1672 nao deve aparecer: quem desenha a
+                            // cobra sao os render objects (0xF04)
+                            SET_OBJECT_SCALE mg_obj 0.0
+                            SET_CLEO_SHARED_VAR SV_PENDING_OBJ mg_obj
+                            SET_CLEO_SHARED_VAR SV_REQUEST 1
+                            // registro permanente (mesmo com Debug = 0): prova
+                            // que o mod chegou a criar uma cobra. mg_k guardou a
+                            // leitura de SV_REQUEST e e relido no proximo ciclo.
+                            OPEN_FILE "cleo\Rattlesnake_procedural.log" "a" (mg_k)
+                            IF mg_k > 0
+                                WRITE_FORMATTED_STRING_TO_FILE mg_k "cobra criada em %.1f %.1f %.1f (surf %i)%c" mg_x mg_y mg_z1 mg_surf 10
+                                CLOSE_FILE mg_k
                             ENDIF
-                        ELSE
                             IF mg_debug = 1
-                                PRINT_FORMATTED_NOW "Rattlesnake: nenhum ponto valido (%i tentativas)" 2500 mg_try
+                                PRINT_FORMATTED_NOW "Rattlesnake: cobra em %.1f %.1f %.1f" 2500 mg_x mg_y mg_z1
                             ENDIF
+                        ENDIF
+                    ELSE
+                        IF mg_debug = 1
+                            PRINT_FORMATTED_NOW "Rattlesnake: nenhum ponto valido (%i tentativas)" 2500 mg_try
                         ENDIF
                     ENDIF
                 ENDIF
             ENDIF
         ENDIF
-    ENDWHILE
+    ENDIF
+    GOTO ManagerLoop
 
 // ---------------------------------------------------------------------------
 // Gerente: le o INI
@@ -317,6 +358,12 @@ ManagerReadIni:
 // ---------------------------------------------------------------------------
 // Gerente: procura um ponto valido em volta do jogador
 // Saida: mg_found (1 = mg_x/mg_y/mg_z1 valem), mg_try (numero de tentativas)
+//
+// mg_why guarda o motivo da recusa de cada tentativa para a mensagem de Debug:
+//   0 = passou          1 = dentro do campo de visao da camera
+//   2 = raio sem chao   3 = nao leu a superficie do colpoint
+//   4 = superficie nao permitida                5 = terreno muito inclinado
+//   6 = em cidade com InCities = 0              9 = jogador fora de jogo
 // ---------------------------------------------------------------------------
 ManagerFindSpot:
     mg_found = 0
@@ -325,10 +372,12 @@ ManagerFindSpot:
     AND mg_found = 0
         mg_try += 1
         mg_ok = 1
+        mg_why = 0
 
         GET_PLAYER_CHAR 0 (mg_j)
         IF NOT IS_PLAYER_PLAYING 0
             mg_ok = 0
+            mg_why = 9
         ENDIF
 
         IF mg_ok = 1
@@ -339,45 +388,67 @@ ManagerFindSpot:
             GENERATE_RANDOM_FLOAT_IN_RANGE mg_min mg_radius (mg_dist)
             GET_COORD_FROM_ANGLED_DISTANCE mg_px mg_py mg_ang mg_dist (mg_x mg_y)
 
+            // raio vertical do chao: 1,5 m acima dos pes ate 3 m abaixo. Fica
+            // aqui em cima porque depende de mg_pz, que a checagem de camera
+            // logo abaixo reaproveita como variavel temporaria.
+            mg_z1 = mg_pz
+            mg_z1 += 1.5
+            mg_z2 = mg_pz
+            mg_z2 -= 3.0
+
             // ---- regra extra: nao aparecer dentro do campo de visao ----
+            // 0xF0E devolve o ponto do mundo que a camera em 3a pessoa esta
+            // mirando; o angulo entre "jogador -> alvo da camera" e
+            // "jogador -> ponto sorteado" diz se a cobra nasceria na tela.
+            // (antes isso era feito lendo a rotacao da camera, cuja convencao
+            //  de eixos nao esta documentada em lugar nenhum)
+            // Variaveis reaproveitadas como temporarias aqui: mg_nz e mg_ang
+            // (as coordenadas do alvo), mg_pz (o angulo do eixo), mg_ang de
+            // novo (o angulo do ponto) e mg_dist (lixo). Todas sao reescritas
+            // antes de serem lidas de novo, e o z do jogador ja virou mg_z1 e
+            // mg_z2 no raio acima.
             IF mg_avoid_cam = 1
-                GET_ANGLE_FROM_TWO_COORDS mg_px mg_py mg_x mg_y (mg_ang)
-                GET_ACTIVE_CAMERA_ROTATION (mg_nz mg_nz mg_nz)
-                mg_z1 = mg_nz
-                mg_z1 -= mg_ang
-                IF mg_z1 > 180.0
-                    mg_z1 -= 360.0
+                // saidas: 1a a camera, 2a o alvo. So o alvo importa, entao as
+                // demais vao para mg_dist (morto aqui: o sorteio do anel ja usou).
+                GET_THIRD_PERSON_CAMERA_TARGET 60.0 mg_px mg_py mg_pz (mg_dist mg_dist mg_dist mg_nz mg_ang mg_dist)
+                GET_ANGLE_FROM_TWO_COORDS mg_px mg_py mg_nz mg_ang (mg_pz)  // eixo: jogador -> alvo
+                GET_ANGLE_FROM_TWO_COORDS mg_px mg_py mg_x mg_y (mg_ang)    // jogador -> ponto
+                mg_ang -= mg_pz
+                IF mg_ang > 180.0
+                    mg_ang -= 360.0
                 ENDIF
-                IF mg_z1 < -180.0
-                    mg_z1 += 360.0
+                IF mg_ang < -180.0
+                    mg_ang += 360.0
                 ENDIF
-                IF mg_z1 > -55.0
-                AND NOT mg_z1 > 55.0
+                IF mg_ang > -55.0
+                AND NOT mg_ang > 55.0
                     mg_ok = 0
+                    mg_why = 1
                 ENDIF
             ENDIF
         ENDIF
 
         // ---- procura o chao ----
         IF mg_ok = 1
-            mg_z1 = mg_pz
-            mg_z1 += 1.5
-            mg_z2 = mg_pz
-            mg_z2 -= 3.0
             GET_LABEL_POINTER ColPointBuffer (mg_cp)
-            IF GET_COLLISION_BETWEEN_POINTS (mg_x mg_y mg_z1) (mg_x mg_y mg_z2) TRUE FALSE FALSE FALSE FALSE TRUE TRUE TRUE -1 mg_cp (mg_x mg_y mg_z1 mg_j)
+            // ultimo parametro = entidade a ignorar: 0 (nenhuma). Nao usar -1,
+            // o CLEO+ repassa o valor direto para CWorld::pIgnoreEntity, que e
+            // um ponteiro de verdade, e 0xFFFFFFFF nao existe.
+            IF GET_COLLISION_BETWEEN_POINTS (mg_x mg_y mg_z1) (mg_x mg_y mg_z2) TRUE FALSE FALSE FALSE FALSE TRUE TRUE TRUE 0 mg_cp (mg_x mg_y mg_z1 mg_j)
                 IF GET_COLPOINT_SURFACE mg_cp (mg_surf)
                     GET_COLPOINT_NORMAL_VECTOR mg_cp (mg_nz mg_nz mg_nz)
                     GOSUB ManagerSurfaceAllowed
                     IF mg_ok = 1
                     AND NOT mg_nz > 0.75
                         mg_ok = 0      // terreno muito inclinado
+                        mg_why = 5
                     ENDIF
                     IF mg_ok = 1
                     AND mg_cities = 0
                         GET_CITY_FROM_COORDS mg_x mg_y mg_z1 (mg_surf)
                         IF NOT mg_surf = CITY_COUNTRYSIDE
                             mg_ok = 0  // dentro de cidade (LS/SF/LV)
+                            mg_why = 6
                         ENDIF
                     ENDIF
                     IF mg_ok = 1
@@ -385,12 +456,24 @@ ManagerFindSpot:
                     ENDIF
                 ELSE
                     mg_ok = 0
+                    mg_why = 3
                 ENDIF
             ELSE
                 mg_ok = 0
+                mg_why = 2
             ENDIF
-            IF mg_debug = 1
-                PRINT_FORMATTED_NOW "Rattlesnake: tentativa %i surf %i ok %i" 2000 mg_try mg_surf mg_ok
+        ENDIF
+
+        // A impressao fica fora de todos os blocos de decisao, senao a recusa
+        // pela camera (que acontece antes do raio) nao aparecia em lugar nenhum.
+        IF mg_debug = 1
+            PRINT_FORMATTED_NOW "Rattlesnake: tentativa %i surf %i ok %i motivo %i" 2000 mg_try mg_surf mg_ok mg_why
+            // A mesma linha vai para o log. mg_obj esta livre aqui: o objeto da
+            // cobra so e criado depois que esta sub retorna.
+            OPEN_FILE "cleo\Rattlesnake_procedural.log" "a" (mg_obj)
+            IF mg_obj > 0
+                WRITE_FORMATTED_STRING_TO_FILE mg_obj "tentativa %i surf %i ok %i motivo %i%c" mg_try mg_surf mg_ok mg_why 10
+                CLOSE_FILE mg_obj
             ENDIF
         ENDIF
     ENDWHILE
@@ -531,13 +614,14 @@ ManagerSurfaceAllowed:
 
     // chegou aqui: superficie nao permitida
     mg_ok = 0
+    mg_why = 4
     RETURN
 
 // ---------------------------------------------------------------------------
 // Gerente: falha ao carregar os modelos
 // ---------------------------------------------------------------------------
 ManagerModelError:
-    PRINT_STRING_NOW "~r~Rattlesnake Procedural: falha ao carregar ModelsQa\\Snake*.dff" 7000
+    PRINT_STRING_NOW "~r~Rattlesnake Procedural: falha ao carregar ModelsQa\Snake*.dff" 7000
     TERMINATE_THIS_CUSTOM_SCRIPT
     RETURN
 }
@@ -562,7 +646,7 @@ LVAR_INT   wk_event
 LVAR_INT   wk_snd_idle
 LVAR_INT   wk_snd_atk
 LVAR_INT   wk_snd_die
-LVAR_INT   wk_i wk_j wk_k
+LVAR_INT   wk_i wk_j wk_k wk_debug wk_log
 LVAR_INT   wk_alive
 LVAR_FLOAT wk_vol
 LVAR_FLOAT wk_despawn
@@ -587,6 +671,18 @@ WorkerLoop:
             GOSUB WorkerSnake
             GOSUB WorkerCleanup
             GOSUB WorkerRelease
+        ELSE
+            // Sem este aviso o pedido sumia calado: o gerente dizia "cobra em
+            // x y z" e nada aparecia, sem nenhuma pista do porque.
+            GET_CLEO_SHARED_VAR SV_DEBUG (wk_debug)
+            IF wk_debug = 1
+                PRINT_STRING_NOW "~r~Rattlesnake: objeto da cobra nao existe (pedido descartado)." 4000
+            ENDIF
+            OPEN_FILE "cleo\Rattlesnake_procedural.log" "a" (wk_log)
+            IF wk_log > 0
+                WRITE_FORMATTED_STRING_TO_FILE wk_log "pedido descartado: objeto %i nao existe%c" wk_obj 10
+                CLOSE_FILE wk_log
+            ENDIF
         ENDIF
     ENDIF
     GOTO WorkerLoop

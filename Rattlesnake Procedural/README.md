@@ -88,7 +88,7 @@ minúsculas fazem parte do funcionamento (e são verificados pelo validador).
 | `MinDistance` | `18.0` | Distância mínima do jogador, em metros. |
 | `DespawnDistance` | `55.0` | A cobra some quando o jogador passa dessa distância (limite: 55). |
 | `Volume` | `0.6` | Volume dos sons, de `0.0` a `1.0`. |
-| `Debug` | `0` | `1` mostra mensagens na tela a cada tentativa de geração. |
+| `Debug` | `0` | `1` mostra o aviso de início e o resultado de cada tentativa de geração. |
 
 Os valores podem ser editados com o jogo aberto: o script relê o arquivo a cada
 verificação. Aumentar `MaxSnakes` em jogo passa a valer a partir da próxima
@@ -114,6 +114,45 @@ valores usados pelo script:
 Tudo o que é asfalto, calçada, concreto, trilho ou aeroporto (`1`–`8`, `89`,
 `134`–`144`, `178`) fica de fora em todos os modos — por isso o modo padrão é o
 único que combina "pode nascer na cidade" com "nunca em cima do asfalto".
+
+### Nenhuma cobra nasceu? Como descobrir o motivo
+
+O script não falha em silêncio. Com `Debug = 1`, cada etapa deixa rastro na tela;
+além disso o próprio mod escreve `cleo\Rattlesnake_procedural.log`, **reescrito a
+cada partida** (apague o arquivo antes de abrir o jogo para o teste ser limpo).
+O que o log diz:
+
+- **arquivo não existe (ou está vazio) depois de abrir o jogo** — o script nem
+  chegou a rodar: confira se `Snake_Procedural.cs` está em `CLEO\` (não em
+  subpastas), se o CLEO/ASI Loader está ativo e se o jogo é a versão de PC.
+- **só o cabeçalho (4 linhas)** — o script rodou e parou antes de criar as
+  threads; a tela mostra o motivo em vermelho (CLEO+ ausente/antigo, modelos).
+- **linhas `tentativa ...`** — o gerente está procurando lugar: `surf` é o
+  material que o jogo devolveu e `ok 0` é recusa, com o motivo no fim da linha.
+- **linhas `cobra criada em ...`** — o mod chegou a criar cobras (aparecem mesmo
+  com `Debug = 0`, de propósito).
+
+| Mensagem | O que significa / o que fazer |
+| --- | --- |
+| `Rattlesnake Procedural: 10 quadros, N threads, chance X%` | O gerente carregou os 10 quadros e criou as threads. Se esta mensagem não aparece, o problema é anterior a ela (veja as linhas abaixo). |
+| `...CLEO+ nao encontrado.` | O `CLEO+.cleo` não está na pasta `CLEO`. O mod precisa do CLEO+ 1.2.0 ou mais novo. |
+| `...precisa do CLEO+ 1.2.0 ou mais novo.` | O CLEO+ instalado é antigo demais. Atualize. |
+| `...falha ao carregar ModelsQa\Snake*.dff` | Os modelos não estão onde o script procura. As pastas `ModelsQa` e `SoundsQa` precisam ficar na **raiz do GTA San Andreas**, ao lado do `gta_sa.exe`. |
+| `...falha ao criar as threads (CLEO+ 1.2.0+?).` | O `STREAM_CUSTOM_SCRIPT_FROM_LABEL` não criou nenhuma thread. CLEO+ ausente/antigo, ou `Snake_Procedural.cs` de uma versão diferente do `Snake_Procedural.sc` (apague e copie o pacote inteiro de novo). |
+| `Rattlesnake: tentativa N surf M ok 1 motivo 0` | Uma tentativa que passou em todas as regras: a cobra foi criada ali. |
+| `Rattlesnake: tentativa N surf M ok 0 motivo 1` | O ponto sorteado estava dentro do campo de visão da câmera (a cobra nasceria na tela). Com `AvoidCameraView = 1` isso é normal; se *todas* as tentativas caírem aqui, teste com `AvoidCameraView = 0`. |
+| `... motivo 2` | O raio vertical não achou chão nenhum (coordenada em interior/lugar sem colisão). |
+| `... motivo 3` | O jogo não devolveu o material do colpoint: a superfície não pode ser conferida, então a tentativa é descartada. |
+| `... motivo 4` | O material do chão não é permitido pelo modo `Surfaces` (quase sempre asfalto/calçada/concreto com `Surfaces = 0` ou `1`). Teste com `Surfaces = 2` para ver se a cobra nasce. |
+| `... motivo 5` | Terreno íngreme demais (`> 0.75` de inclinação no vetor normal). |
+| `... motivo 6` | O ponto está em Los Santos/San Fierro/Las Venturas e `InCities = 0`. |
+| `... motivo 9` | O jogador não está em jogo (carregando, menu, missão com o ped trocado). |
+| `Rattlesnake: nenhum ponto valido (8 tentativas)` | As 8 tentativas daquela verificação falharam — os motivos de cada uma vieram nas linhas anteriores. |
+| `Rattlesnake: objeto da cobra nao existe (pedido descartado).` | O objeto invisível foi criado e desapareceu antes da thread pegá-lo (algum script ou o próprio jogo limpou objetos "no save"). |
+
+Também vale conferir se o `Snake_Procedural.cs` está em `CLEO\` (não dentro de
+subpastas) e se o CLEO o listou como carregado no log dele (`cleo\cleo.log`): um
+`.cs` na pasta errada simplesmente não roda, e aí nenhuma mensagem aparece.
 
 ## Compilação
 
@@ -199,7 +238,8 @@ cada pull request, valida o pacote e atualiza o `.cs` versionado.
 ## Limitações conhecidas
 
 - A escolha do chão é heurística: usa o material da colisão, não o tipo de zona
-  do mapa. `Debug = 1` mostra o que o jogo informou em cada tentativa.
+  do mapa. `Debug = 1` mostra o material e o motivo de cada recusa (veja a
+  tabela de mensagens acima).
 - Não nascem cobras em solo sem material natural dentro do raio — em bairros
   muito urbanos, sem parques nem grama, o mod simplesmente fica quieto (que é o
   comportamento desejado).

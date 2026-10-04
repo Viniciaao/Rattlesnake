@@ -91,7 +91,7 @@ def validate_source() -> str:
         "GET_COLPOINT_SURFACE",
         "GET_COLPOINT_NORMAL_VECTOR",
         "GET_CITY_FROM_COORDS",
-        "GET_ACTIVE_CAMERA_ROTATION",
+        "GET_THIRD_PERSON_CAMERA_TARGET",
         "LOAD_SPECIAL_MODEL",
         "CREATE_RENDER_OBJECT_TO_OBJECT_FROM_SPECIAL",
         "SET_RENDER_OBJECT_VISIBLE",
@@ -126,8 +126,48 @@ def validate_source() -> str:
 
     # Sanity: the manager only terminates before any worker exists.
     manager = worker[0]
-    if manager.count("TERMINATE_THIS_CUSTOM_SCRIPT") < 1 or manager.count("TERMINATE_THIS_CUSTOM_SCRIPT") > 4:
+    if manager.count("TERMINATE_THIS_CUSTOM_SCRIPT") < 1 or manager.count("TERMINATE_THIS_CUSTOM_SCRIPT") > 6:
         fail(f"{relative}: unexpected amount of manager terminations")
+
+    # "WHILE TRUE" e uma armadilha: o gta3script nao tem constante booleana, o
+    # TRUE vira o opcode 0x485 (IS_PC_VERSION) e o laco passa a depender do
+    # resultado de um comando que nao tem nada a ver com o teste. O laco do
+    # gerente tem de usar rotulo + GOTO, como o do trabalhador.
+    # (comentarios fora: o proprio arquivo explica o motivo e nao pode se acusar)
+    for raw in source.splitlines():
+        code = raw.split("//", 1)[0]
+        if re.search(r"\bWHILE\s+TRUE\b", code, re.IGNORECASE):
+            fail(f"{relative}: 'WHILE TRUE' compila para o opcode 0x485; use rotulo + GOTO")
+
+    # Log em arquivo: tem de ser criado do zero no inicio (senao o arquivo da
+    # partida anterior faria o diagnostico mentir) e so depois acrescentado.
+    if source.count('OPEN_FILE "cleo\\Rattlesnake_procedural.log" "w"') != 1:
+        fail(f"{relative}: o log precisa de um unico OPEN_FILE ... \"w\" no inicio")
+    if source.count('OPEN_FILE "cleo\\Rattlesnake_procedural.log" "a"') < 2:
+        fail(f"{relative}: o log precisa de OPEN_FILE ... \"a\" para cada evento")
+
+    # O gta3script nao interpreta escapes dentro de string: uma barra dupla no
+    # caminho vai literal para o jogo (\"cleo\\Snake.ini\" vira cleo com duas
+    # barras). O compilador nao reclama, entao a checagem fica aqui.
+    for raw in source.splitlines():
+        code = raw.split("//", 1)[0]
+        if re.search(r'"[^"]*\\\\[^"]*"', code):
+            fail(f"{relative}: string com barra invertida dupla (o gta3sc nao "
+                 "interpreta escapes); use uma barra so")
+
+    for label, target in (("ManagerLoop:", "GOTO ManagerLoop"),):
+        if label not in source:
+            fail(f"{relative}: missing loop label {label}")
+        if target not in source:
+            fail(f"{relative}: {label} has no {target}")
+
+    # O 9o argumento de GET_COLLISION_BETWEEN_POINTS e a entidade a ignorar e o
+    # CLEO+ repassa o valor direto para CWorld::pIgnoreEntity, ou seja, e um
+    # ponteiro. -1 (0xFFFFFFFF) e um ponteiro invalido: use 0.
+    for line in source.splitlines():
+        if "GET_COLLISION_BETWEEN_POINTS" in line and re.search(r"\s-1\s", line):
+            fail(f"{relative}: GET_COLLISION_BETWEEN_POINTS com EntityToIgnore = -1 "
+                 "(ponteiro invalido; use 0)")
 
     # Every INT read from the INI must have a default, because the CLEO INI
     # opcode writes the 0x80000000 sentinel into the variable when the file or
@@ -293,7 +333,7 @@ def validate_config() -> None:
         "STREAM_CUSTOM_SCRIPT_FROM_LABEL", "GET_LAST_CREATED_CUSTOM_SCRIPT",
         "LOCATE_CHAR_DISTANCE_TO_OBJECT", "LOCATE_CHAR_DISTANCE_TO_COORDINATES",
         "GET_COORD_FROM_ANGLED_DISTANCE", "LOAD_SPECIAL_MODEL", "REMOVE_SPECIAL_MODEL",
-        "CREATE_RENDER_OBJECT_TO_OBJECT_FROM_SPECIAL", "GET_ACTIVE_CAMERA_ROTATION",
+        "CREATE_RENDER_OBJECT_TO_OBJECT_FROM_SPECIAL", "GET_THIRD_PERSON_CAMERA_TARGET",
     )
     for name in needed:
         if 'Name="%s"' % name not in text:

@@ -186,11 +186,18 @@
         <Arg Type="FLOAT" Desc="ClosestZ" Out="true"/>
       </Args>
     </Command>
-    <Command ID="0xF10" Name="GET_ACTIVE_CAMERA_ROTATION">
+    <Command ID="0xF0E" Name="GET_THIRD_PERSON_CAMERA_TARGET">
       <Args>
-        <Arg Type="FLOAT" Desc="X" Out="true"/>
-        <Arg Type="FLOAT" Desc="Y" Out="true"/>
-        <Arg Type="FLOAT" Desc="Z" Out="true"/>
+        <Arg Type="FLOAT" Desc="Range"/>
+        <Arg Type="FLOAT" Desc="SourceX"/>
+        <Arg Type="FLOAT" Desc="SourceY"/>
+        <Arg Type="FLOAT" Desc="SourceZ"/>
+        <Arg Type="FLOAT" Desc="StartX" Out="true"/>
+        <Arg Type="FLOAT" Desc="StartY" Out="true"/>
+        <Arg Type="FLOAT" Desc="StartZ" Out="true"/>
+        <Arg Type="FLOAT" Desc="EndX" Out="true"/>
+        <Arg Type="FLOAT" Desc="EndY" Out="true"/>
+        <Arg Type="FLOAT" Desc="EndZ" Out="true"/>
       </Args>
     </Command>
     <Command ID="0x485" Name="TRUE"/>
